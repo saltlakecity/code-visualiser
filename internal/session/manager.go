@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"visualisator/internal/analyzer"
 	"visualisator/internal/debugger"
 	"visualisator/internal/models"
 	"visualisator/internal/workspace"
@@ -31,9 +32,11 @@ type entry struct {
 	debug            *debugger.Session
 	mode             string
 	source           string
+	editorSource     string
 	debugSource      string
 	debugFile        string
 	editorLineOffset int
+	sourceMap        *analyzer.SourceMap
 	done             chan struct{}
 }
 
@@ -126,14 +129,21 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 	debugSource := string(debugBytes)
 	offset := workspace.EditorLineOffset(editorSource, debugSource)
 
+	var sourceMap *analyzer.SourceMap
+	if sm, err := analyzer.ParseSource(editorSource); err == nil {
+		sourceMap = sm
+	}
+
 	m.mu.Lock()
 	m.sessions[paths.ID] = &entry{
 		paths:            paths,
 		mode:             mode,
 		source:           source,
+		editorSource:     editorSource,
 		debugSource:      debugSource,
 		debugFile:        debugFile,
 		editorLineOffset: offset,
+		sourceMap:        sourceMap,
 	}
 	m.mu.Unlock()
 
@@ -181,12 +191,21 @@ func (m *Manager) StartDebug(sessionID string, opts models.RunOptions) error {
 	if err != nil {
 		return err
 	}
+	lang := analyzer.LangEN
+	if opts.Lang == "ru" {
+		lang = analyzer.LangRU
+	}
+	dbg.SetExplainConfig(&analyzer.ExplainConfig{
+		SourceMap: e.sourceMap,
+		Narrate:   analyzer.NewNarrateContext(),
+		Lang:      lang,
+	})
 	dbg.StartTimeout()
 	e.debug = dbg
 
 	maxSteps := opts.MaxSteps
 	if maxSteps <= 0 {
-		maxSteps = 300
+		maxSteps = 800
 	}
 	done := make(chan struct{})
 	e.done = done
@@ -244,6 +263,25 @@ func (m *Manager) GetFrame(sessionID string, index int) (*models.TraceFrame, err
 		return nil, fmt.Errorf("frame %d not found", index)
 	}
 	return f, nil
+}
+
+// AnalyzeSource returns static outline for editor source (before run).
+func (m *Manager) AnalyzeSource(source string) (models.SourceOutline, string, error) {
+	sm, err := analyzer.ParseSource(source)
+	if err != nil {
+		return models.SourceOutline{}, "", err
+	}
+	lang := analyzer.LangRU
+	return analyzer.ToSourceOutline(sm.Outline), analyzer.OutlineSummary(lang, sm.Outline), nil
+}
+
+// GetSourceOutline returns outline stored for a compiled session.
+func (m *Manager) GetSourceOutline(sessionID string) (models.SourceOutline, bool) {
+	e := m.getEntry(sessionID)
+	if e == nil || e.sourceMap == nil {
+		return models.SourceOutline{}, false
+	}
+	return analyzer.ToSourceOutline(e.sourceMap.Outline), true
 }
 
 // Stop ends debug and cleans up.

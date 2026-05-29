@@ -73,6 +73,42 @@ export interface VizModel {
   entries?: { key: string; value: string }[];
 }
 
+export interface VarDelta {
+  name: string;
+  type: string;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface FrameExplanation {
+  summary: string;
+  lineText: string;
+  stmtKind: string;
+  condition?: string;
+  changes: VarDelta[];
+  loopIter?: number;
+}
+
+export interface OutlinePoint {
+  line: number;
+  text: string;
+}
+
+export interface SourceOutline {
+  name: string;
+  params: string;
+  returns: string;
+  loops?: OutlinePoint[];
+  branches?: OutlinePoint[];
+  returnsAt?: OutlinePoint[];
+  demoCall?: string;
+}
+
+export interface AnalyzeResult {
+  outline: SourceOutline;
+  summary: string;
+}
+
 export interface TraceFrame {
   index: number;
   file: string;
@@ -82,6 +118,7 @@ export interface TraceFrame {
   variables: Variable[];
   stack: StackFrame[];
   viz: VizModel[];
+  explanation?: FrameExplanation;
 }
 
 export interface Trace {
@@ -100,4 +137,5 @@ export interface StepResult {
 
 export interface RunOptions {
   maxSteps: number;
+  lang?: string;
 }

@@ -37,6 +37,12 @@ type TestResult struct {
 	Error    string `json:"error,omitempty"`
 }
 
+// AnalyzeResult is static analysis before debug run.
+type AnalyzeResult struct {
+	Outline SourceOutline `json:"outline"`
+	Summary string        `json:"summary"`
+}
+
 // CompileResult from go build.
 type CompileResult struct {
 	Success          bool           `json:"success"`
@@ -59,7 +65,8 @@ type CompileError struct {
 
 // RunOptions for debug session.
 type RunOptions struct {
-	MaxSteps int `json:"maxSteps"`
+	MaxSteps int    `json:"maxSteps"`
+	Lang     string `json:"lang,omitempty"` // "ru" or "en"
 }
 
 // Trace is recorded execution frames.
@@ -70,16 +77,52 @@ type Trace struct {
 	PanicMsg  string       `json:"panicMsg,omitempty"`
 }
 
+// VarDelta is a variable change between execution steps.
+type VarDelta struct {
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	OldValue string `json:"oldValue"`
+	NewValue string `json:"newValue"`
+}
+
+// FrameExplanation is a human-readable breakdown of one execution step.
+type FrameExplanation struct {
+	Summary   string     `json:"summary"`
+	LineText  string     `json:"lineText"`
+	StmtKind  string     `json:"stmtKind"`
+	Condition string     `json:"condition,omitempty"`
+	Changes   []VarDelta `json:"changes"`
+	LoopIter  int        `json:"loopIter,omitempty"`
+}
+
+// SourceOutline is static function overview for the breakdown tab.
+type SourceOutline struct {
+	Name      string         `json:"name"`
+	Params    string         `json:"params"`
+	Returns   string         `json:"returns"`
+	Loops     []OutlinePoint `json:"loops,omitempty"`
+	Branches  []OutlinePoint `json:"branches,omitempty"`
+	ReturnsAt []OutlinePoint `json:"returnsAt,omitempty"`
+	DemoCall  string         `json:"demoCall,omitempty"`
+}
+
+// OutlinePoint marks control-flow at a line.
+type OutlinePoint struct {
+	Line int    `json:"line"`
+	Text string `json:"text"`
+}
+
 // TraceFrame is one debugger snapshot.
 type TraceFrame struct {
-	Index      int            `json:"index"`
-	File       string         `json:"file"`
-	Line       int            `json:"line"`
-	EditorLine int            `json:"editorLine"`
-	Function   string         `json:"function"`
-	Variables []Variable     `json:"variables"`
-	Stack     []StackFrame   `json:"stack"`
-	Viz       []VizModel     `json:"viz"`
+	Index       int               `json:"index"`
+	File        string            `json:"file"`
+	Line        int               `json:"line"`
+	EditorLine  int               `json:"editorLine"`
+	Function    string            `json:"function"`
+	Variables   []Variable        `json:"variables"`
+	Stack       []StackFrame      `json:"stack"`
+	Viz         []VizModel        `json:"viz"`
+	Explanation *FrameExplanation `json:"explanation,omitempty"`
 }
 
 // Variable is a debug variable tree node.

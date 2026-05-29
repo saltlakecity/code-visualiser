@@ -9,6 +9,7 @@ import (
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"visualisator/internal/analyzer"
 	"visualisator/internal/models"
 	"visualisator/internal/paths"
 	"visualisator/internal/problems"
@@ -107,6 +108,22 @@ func (a *App) LoadProblem(id string) (models.Problem, error) {
 	}
 	NormalizeProblemTests(&p)
 	return p, nil
+}
+
+// AnalyzeSource returns static function outline for the breakdown tab before run.
+func (a *App) AnalyzeSource(source string, lang string) (models.AnalyzeResult, error) {
+	sm, err := analyzer.ParseSource(source)
+	if err != nil {
+		return models.AnalyzeResult{}, err
+	}
+	l := analyzer.LangEN
+	if lang == "ru" {
+		l = analyzer.LangRU
+	}
+	return models.AnalyzeResult{
+		Outline: analyzer.ToSourceOutline(sm.Outline),
+		Summary: analyzer.OutlineSummary(l, sm.Outline),
+	}, nil
 }
 
 // Compile builds user source. mainRunner is optional main func body for algorithm problems.

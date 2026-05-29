@@ -32,10 +32,11 @@ import { t, translateStatus } from './i18n';
 import { currentLang } from './store/settingsStore';
 import type { TestResult, Trace } from './types';
 import { VariableChangesBanner } from './components/VariableChangesBanner';
+import { BreakdownPanel, explanationChangedVars } from './components/BreakdownPanel';
 import { computeVarChanges, changedVarNames } from './utils/varChanges';
 import { hasSliceLikeVariables } from './utils/vizHelpers';
 
-type RightTab = 'vars' | 'stack';
+type RightTab = 'vars' | 'stack' | 'breakdown';
 
 const BASE_PLAY_MS = 500;
 
@@ -262,7 +263,7 @@ function App() {
     setSessionId(sid);
     setStatus('debugging');
     try {
-      await RunDebug(sid, { maxSteps: 400 });
+      await RunDebug(sid, { maxSteps: 800, lang });
       setTimeout(async () => {
         try {
           const trc = await GetTrace(sid);
@@ -375,7 +376,11 @@ function App() {
     () => computeVarChanges(prev?.variables ?? [], frame?.variables ?? []),
     [prev?.variables, frame?.variables],
   );
-  const changedVars = useMemo(() => changedVarNames(varChanges), [varChanges]);
+  const changedVars = useMemo(() => {
+    const fromExp = explanationChangedVars(frame ?? undefined);
+    if (fromExp.length > 0) return fromExp;
+    return changedVarNames(varChanges);
+  }, [frame, varChanges]);
   const canStep = !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
   const canPlay = (trace?.frames?.length ?? 0) > 0;
 
@@ -456,6 +461,9 @@ function App() {
             <TabButton active={rightTab === 'stack'} onClick={() => setRightTab('stack')}>
               {tr.callStack}
             </TabButton>
+            <TabButton active={rightTab === 'breakdown'} onClick={() => setRightTab('breakdown')}>
+              {tr.breakdown}
+            </TabButton>
           </div>
           <ResizableRightPanel
             varsHeight={varsHeight}
@@ -468,8 +476,16 @@ function App() {
                   prevVariables={prev?.variables ?? []}
                   onSelectVar={setHighlightedVar}
                 />
-              ) : (
+              ) : rightTab === 'stack' ? (
                 <CallStack stack={frame?.stack ?? []} />
+              ) : (
+                <BreakdownPanel
+                  trace={trace}
+                  frameIndex={frameIndex}
+                  source={source}
+                  lang={lang}
+                  onSelectStep={handleTimelineChange}
+                />
               )
             }
             vizPanel={

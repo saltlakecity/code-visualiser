@@ -10,6 +10,7 @@ import (
 	"github.com/go-delve/delve/service/api"
 	"github.com/go-delve/delve/service/debugger"
 
+	"visualisator/internal/analyzer"
 	"visualisator/internal/models"
 )
 
@@ -29,6 +30,12 @@ type Session struct {
 	binary   string
 	timeout  time.Duration
 	done     chan struct{}
+	explain  *analyzer.ExplainConfig
+}
+
+// SetExplainConfig enables per-step narration on recorded frames.
+func (s *Session) SetExplainConfig(cfg *analyzer.ExplainConfig) {
+	s.explain = cfg
 }
 
 // NewSession launches Delve on the compiled binary.
@@ -268,6 +275,15 @@ func (s *Session) captureState(state *api.DebuggerState, editorLineOffset int) (
 	}
 
 	tf := BuildFrame(file, debugLine, editorLine, fn, vars, stack)
+
+	var prevVars []models.Variable
+	if n := s.recorder.Count(); n > 0 {
+		if last := s.recorder.FrameAt(n - 1); last != nil {
+			prevVars = last.Variables
+		}
+	}
+	analyzer.EnrichFrame(s.explain, &tf, prevVars)
+
 	s.recorder.Append(tf)
 	s.recorder.SetStatus("paused", "")
 	return &tf, nil
