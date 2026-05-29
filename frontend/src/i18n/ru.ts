@@ -26,6 +26,7 @@ export const ru: Locale = {
   callStackEmpty: 'Стек вызовов пуст',
   vizEmpty: 'Запустите код для визуализации структур данных',
   vizUnrecognized: 'Структуры данных в переменных не распознаны для визуализации',
+  varChanges: 'Изменения переменных',
   status: {
     idle: 'ожидание',
     compiling: 'компиляция',
@@ -49,6 +50,10 @@ export const ru: Locale = {
     cancel: 'Отмена',
     dark: 'Тёмная',
     light: 'Светлая',
+    uiStyle: 'Стиль интерфейса',
+    uiDefault: 'Стандартный',
+    uiMinimal: 'Минимальный (экономия GPU)',
+    uiPremium: 'Премиум',
     langEn: 'English',
     langRu: 'Русский',
   },

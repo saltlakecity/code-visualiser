@@ -3,6 +3,7 @@ export namespace models {
 	export class AppSettings {
 	    language: string;
 	    theme: string;
+	    uiStyle: string;
 	    accentColor: string;
 	    customCodeDir: string;
 	    dataDir: string;
@@ -16,6 +17,7 @@ export namespace models {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.language = source["language"];
 	        this.theme = source["theme"];
+	        this.uiStyle = source["uiStyle"];
 	        this.accentColor = source["accentColor"];
 	        this.customCodeDir = source["customCodeDir"];
 	        this.dataDir = source["dataDir"];

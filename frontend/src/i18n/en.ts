@@ -24,6 +24,7 @@ export const en = {
   callStackEmpty: 'Call stack empty',
   vizEmpty: 'Run code to see data structure visualization',
   vizUnrecognized: 'Data structures in variables were not recognized for visualization',
+  varChanges: 'Variable changes',
   status: {
     idle: 'idle',
     compiling: 'compiling',
@@ -47,6 +48,10 @@ export const en = {
     cancel: 'Cancel',
     dark: 'Dark',
     light: 'Light',
+    uiStyle: 'UI style',
+    uiDefault: 'Default',
+    uiMinimal: 'Minimal (low GPU)',
+    uiPremium: 'Premium',
     langEn: 'English',
     langRu: 'Russian',
   },

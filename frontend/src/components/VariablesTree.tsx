@@ -4,6 +4,7 @@ import { t } from '../i18n';
 import { useDebuggerStore } from '../store/debuggerStore';
 import { useSettingsStore, currentLang } from '../store/settingsStore';
 import type { Variable } from '../types';
+import { formatTypeTip, lookupType } from '../utils/goReference';
 
 interface Props {
   variables: Variable[];
@@ -13,7 +14,8 @@ interface Props {
 
 export function VariablesTree({ variables, prevVariables = [], onSelectVar }: Props) {
   const { settings } = useSettingsStore();
-  const tr = t(currentLang(settings));
+  const lang = currentLang(settings);
+  const tr = t(lang);
   const { highlightedVar } = useDebuggerStore();
 
   const prevMap = useMemo(() => buildVarMap(prevVariables), [prevVariables]);
@@ -36,6 +38,7 @@ export function VariablesTree({ variables, prevVariables = [], onSelectVar }: Pr
           changed={changed.has(v.name)}
           highlighted={highlightedVar === v.name}
           onSelect={onSelectVar}
+          lang={lang}
         />
       ))}
     </div>
@@ -48,22 +51,26 @@ function VarNode({
   changed,
   highlighted,
   onSelect,
+  lang,
 }: {
   v: Variable;
   depth: number;
   changed: boolean;
   highlighted: boolean;
   onSelect?: (name: string) => void;
+  lang: 'en' | 'ru';
 }) {
   const [open, setOpen] = useState(depth < 2);
   const hasChildren = (v.children?.length ?? 0) > 0;
   const preview = formatPreview(v);
+  const typeInfo = lookupType(v.type, lang);
+  const typeTip = formatTypeTip(typeInfo, v.type);
 
   return (
     <div style={{ paddingLeft: depth * 10 }}>
       <div
         className={`mb-1 rounded px-1 py-1 ${
-          highlighted ? 'ring-1 ring-accent' : changed ? 'bg-amber-500/15' : ''
+          highlighted ? 'ring-1 ring-accent bg-accent/10' : changed ? 'bg-amber-500/15' : ''
         } ${onSelect ? 'cursor-pointer hover:bg-bg' : ''}`}
         onClick={() => {
           if (hasChildren) setOpen(!open);
@@ -81,8 +88,18 @@ function VarNode({
             <span className="w-3" />
           )}
           <span className="font-semibold text-accent">{v.name}</span>
-          <span className="rounded bg-bg px-1 py-0.5 font-mono text-[10px] text-muted">{v.type}</span>
-          {changed && <span className="text-[10px] text-amber-400">Δ</span>}
+          <span
+            className="go-tip go-tip-type cursor-help rounded bg-bg px-1 py-0.5 font-mono text-[10px] text-muted"
+            data-tip={typeTip}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {v.type}
+          </span>
+          {changed && (
+            <span className="rounded bg-amber-500/20 px-1 text-[10px] font-semibold text-amber-400">
+              Δ
+            </span>
+          )}
         </div>
         <div className="ml-4 truncate font-mono text-success">{preview}</div>
       </div>
@@ -95,6 +112,7 @@ function VarNode({
             changed={false}
             highlighted={false}
             onSelect={onSelect}
+            lang={lang}
           />
         ))}
     </div>

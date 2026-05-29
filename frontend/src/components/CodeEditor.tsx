@@ -1,5 +1,7 @@
+import { useMemo } from 'react';
+import type { Language } from '../i18n';
 import type { CompileError } from '../types';
-import { LineHighlightEditor } from './LineHighlightEditor';
+import { GoEditEditor, LineHighlightEditor } from './LineHighlightEditor';
 
 interface Props {
   source: string;
@@ -10,6 +12,9 @@ interface Props {
   readOnly?: boolean;
   onEditAgain?: () => void;
   editAgainLabel?: string;
+  lang?: Language;
+  changedVars?: string[];
+  activeVar?: string | null;
 }
 
 export function CodeEditor({
@@ -21,15 +26,19 @@ export function CodeEditor({
   readOnly = false,
   onEditAgain,
   editAgainLabel,
+  lang = 'en',
+  changedVars = [],
+  activeVar = null,
 }: Props) {
   const lineErrs = errors.filter((e) => e.line > 0);
+  const errorLines = useMemo(() => new Set(lineErrs.map((e) => e.line)), [lineErrs]);
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-lg border border-border bg-panel">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-panel">
       {readOnly ? (
         <>
           {onEditAgain && (
-            <div className="flex items-center justify-between border-b border-border bg-bg/50 px-3 py-1.5">
+            <div className="flex shrink-0 items-center justify-between border-b border-border bg-bg/50 px-3 py-1.5">
               <span className="text-[10px] uppercase tracking-wide text-muted">Replay mode</span>
               <button
                 onClick={onEditAgain}
@@ -43,18 +52,16 @@ export function CodeEditor({
             source={source}
             highlightLine={highlightLine}
             scrollKey={scrollKey}
+            lang={lang}
+            changedVars={changedVars}
+            activeVar={activeVar}
           />
         </>
       ) : (
-        <textarea
-          className="min-h-0 flex-1 resize-none bg-transparent p-3 font-mono text-sm leading-relaxed text-[var(--color-text)] outline-none"
-          value={source}
-          spellCheck={false}
-          onChange={(e) => onChange(e.target.value)}
-        />
+        <GoEditEditor source={source} onChange={onChange} errorLines={errorLines} />
       )}
       {lineErrs.length > 0 && (
-        <div className="max-h-24 overflow-y-auto border-t border-border bg-error/10 p-2 text-xs text-error">
+        <div className="max-h-24 shrink-0 overflow-y-auto border-t border-border bg-error/10 p-2 text-xs text-error">
           {lineErrs.map((e, i) => (
             <div key={`${e.line}-${i}`}>
               {e.line}: {e.message}

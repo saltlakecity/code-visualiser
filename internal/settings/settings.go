@@ -13,6 +13,7 @@ import (
 type AppSettings struct {
 	Language      string  `json:"language"`
 	Theme         string  `json:"theme"`
+	UIStyle       string  `json:"uiStyle"`
 	AccentColor   string  `json:"accentColor"`
 	CustomCodeDir string  `json:"customCodeDir"`
 	DataDir       string  `json:"dataDir"`
@@ -25,6 +26,7 @@ func DefaultSettings() AppSettings {
 	return AppSettings{
 		Language:      "ru",
 		Theme:         "dark",
+		UIStyle:       "default",
 		AccentColor:   "#ffa116",
 		CustomCodeDir: paths.DefaultCustomCodeDir(),
 		DataDir:       dataDir,
@@ -69,6 +71,9 @@ func (s *Store) Load() error {
 	}
 	if data.Theme == "" {
 		data.Theme = "dark"
+	}
+	if data.UIStyle == "" {
+		data.UIStyle = "default"
 	}
 	if data.AccentColor == "" {
 		data.AccentColor = "#ffa116"

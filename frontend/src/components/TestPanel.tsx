@@ -117,7 +117,7 @@ export function TestPanel({ onRunSelected, onRunAll }: Props) {
   const edit = editing ?? selected;
 
   return (
-    <div className="border-t border-border bg-panel p-3">
+    <div className="max-h-48 shrink-0 overflow-y-auto border-t border-border bg-panel p-3">
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">{tr.testCases}</h3>
         <div className="ml-auto flex gap-1">

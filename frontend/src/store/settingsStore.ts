@@ -3,7 +3,8 @@ import { GetSettings, SaveSettings } from '../../wailsjs/go/app/App';
 import { models } from '../../wailsjs/go/models';
 import type { Language } from '../i18n';
 
-export type AppSettings = models.AppSettings;
+export type UIStyle = 'default' | 'minimal' | 'premium';
+export type AppSettings = models.AppSettings & { uiStyle?: string };
 
 interface SettingsState {
   settings: AppSettings;
@@ -20,10 +21,11 @@ interface SettingsState {
 const defaults = new models.AppSettings({
   language: 'ru',
   theme: 'dark',
+  uiStyle: 'default',
   accentColor: '#ffa116',
   customCodeDir: '',
   playbackSpeed: 1,
-});
+}) as AppSettings;
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   settings: defaults,
@@ -37,11 +39,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         settings: new models.AppSettings({
           language: s.language || 'ru',
           theme: s.theme || 'dark',
+          uiStyle: s.uiStyle || 'default',
           accentColor: s.accentColor || '#ffa116',
           customCodeDir: s.customCodeDir || '',
           dataDir: s.dataDir || '',
           playbackSpeed: s.playbackSpeed || 1,
-        }),
+        }) as AppSettings,
         loaded: true,
       });
       get().applyTheme();
@@ -63,6 +66,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     const accent = settings.accentColor || '#ffa116';
     root.style.setProperty('--color-accent', accent);
     root.dataset.theme = settings.theme || 'dark';
+    root.dataset.uiStyle = (settings.uiStyle as UIStyle) || 'default';
+
     if (settings.theme === 'light') {
       root.style.setProperty('--color-bg', '#f0f0f5');
       root.style.setProperty('--color-panel', '#ffffff');
@@ -75,6 +80,21 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       root.style.setProperty('--color-border', '#2a2a35');
       root.style.setProperty('--color-text', '#e8e8ef');
       root.style.setProperty('--color-muted', '#8b8b9e');
+    }
+
+    const uiStyle = (settings.uiStyle as UIStyle) || 'default';
+    if (uiStyle === 'minimal') {
+      root.style.setProperty('--editor-glow', 'none');
+      root.style.setProperty('--panel-blur', 'none');
+      root.style.setProperty('--radius-base', '2px');
+    } else if (uiStyle === 'premium') {
+      root.style.setProperty('--editor-glow', '0 0 24px color-mix(in srgb, var(--color-accent) 12%, transparent)');
+      root.style.setProperty('--panel-blur', 'blur(8px)');
+      root.style.setProperty('--radius-base', '10px');
+    } else {
+      root.style.setProperty('--editor-glow', 'none');
+      root.style.setProperty('--panel-blur', 'none');
+      root.style.setProperty('--radius-base', '8px');
     }
   },
 }));

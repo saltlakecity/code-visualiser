@@ -11,6 +11,9 @@
   --color-muted: #8b8b9e;
   --color-success: #01ff85;
   --color-error: #ff4747;
+  --radius-base: 8px;
+  --editor-glow: none;
+  --panel-blur: none;
 }
 
 [data-theme='light'] {
@@ -30,6 +33,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  overflow: hidden;
   background: var(--color-bg);
   color: var(--color-text);
   font-family: 'Segoe UI', system-ui, sans-serif;
@@ -76,6 +80,29 @@ body,
   background-color: color-mix(in srgb, var(--color-error) 10%, transparent) !important;
 }
 
+/* UI style presets */
+[data-ui-style='minimal'] .rounded-lg,
+[data-ui-style='minimal'] .rounded-md {
+  border-radius: var(--radius-base) !important;
+}
+
+[data-ui-style='minimal'] * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+[data-ui-style='premium'] .bg-panel {
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--color-panel) 92%, var(--color-accent)) 0%,
+    var(--color-panel) 100%
+  ) !important;
+}
+
+[data-ui-style='premium'] .border-border {
+  border-color: color-mix(in srgb, var(--color-border) 80%, var(--color-accent)) !important;
+}
+
 /* Go syntax highlighting (Prism tokens) */
 .go-editor .token.comment,
 .go-editor .token.prolog,
@@ -119,4 +146,79 @@ body,
 .go-editor .token.important,
 .go-editor .token.variable {
   color: #ffa657;
+}
+
+[data-theme='light'] .go-editor .token.comment {
+  color: #6e7781;
+}
+[data-theme='light'] .go-editor .token.keyword {
+  color: #cf222e;
+}
+[data-theme='light'] .go-editor .token.function {
+  color: #8250df;
+}
+
+/* Variable highlights during playback */
+.go-var-changed {
+  background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-radius: 2px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+}
+
+.go-var-active {
+  background: color-mix(in srgb, var(--color-success) 30%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--color-success) 50%, transparent);
+  border-radius: 2px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+}
+
+/* Tooltips for types / functions in code and variables panel */
+.go-tip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted color-mix(in srgb, var(--color-muted) 60%, transparent);
+}
+
+.go-tip-func {
+  border-bottom-color: color-mix(in srgb, #d2a8ff 50%, transparent);
+}
+
+.go-tip-type {
+  border-bottom-color: color-mix(in srgb, #79c0ff 50%, transparent);
+}
+
+.go-tip:hover::after,
+.go-tip:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 100;
+  min-width: 160px;
+  max-width: 320px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-panel);
+  color: var(--color-text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  box-shadow: var(--editor-glow), 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+[data-ui-style='minimal'] .go-tip:hover::after {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.go-editor pre {
+  margin: 0;
+}
+
+.go-editor {
+  box-shadow: var(--editor-glow);
 }

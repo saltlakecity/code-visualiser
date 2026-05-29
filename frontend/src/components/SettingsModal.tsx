@@ -60,6 +60,17 @@ export function SettingsModal() {
           <option value="light">{tr.settings.light}</option>
         </select>
 
+        <label className="mt-3 block text-xs text-muted">{tr.settings.uiStyle}</label>
+        <select
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm"
+          value={(draft as AppSettings).uiStyle || 'default'}
+          onChange={(e) => setDraft({ ...draft, uiStyle: e.target.value } as AppSettings)}
+        >
+          <option value="default">{tr.settings.uiDefault}</option>
+          <option value="minimal">{tr.settings.uiMinimal}</option>
+          <option value="premium">{tr.settings.uiPremium}</option>
+        </select>
+
         <label className="mt-3 block text-xs text-muted">{tr.settings.accentColor}</label>
         <div className="mt-1 flex gap-2">
           <input

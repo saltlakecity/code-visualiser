@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import {
   BuildRunnerFromTest,
@@ -31,6 +31,8 @@ import { SettingsModal } from './components/SettingsModal';
 import { t, translateStatus } from './i18n';
 import { currentLang } from './store/settingsStore';
 import type { TestResult, Trace } from './types';
+import { VariableChangesBanner } from './components/VariableChangesBanner';
+import { computeVarChanges, changedVarNames } from './utils/varChanges';
 import { hasSliceLikeVariables } from './utils/vizHelpers';
 
 type RightTab = 'vars' | 'stack';
@@ -66,6 +68,7 @@ function App() {
     setCustomTests,
     setTestResults,
     setHighlightedVar,
+    highlightedVar,
     resetTrace,
     currentFrame,
     prevFrame,
@@ -367,11 +370,17 @@ function App() {
   const frame = currentFrame();
   const prev = prevFrame();
   const highlightLine = frame?.editorLine ?? frame?.line ?? 0;
+  const lang = currentLang(settings);
+  const varChanges = useMemo(
+    () => computeVarChanges(prev?.variables ?? [], frame?.variables ?? []),
+    [prev?.variables, frame?.variables],
+  );
+  const changedVars = useMemo(() => changedVarNames(varChanges), [varChanges]);
   const canStep = !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
   const canPlay = (trace?.frames?.length ?? 0) > 0;
 
   return (
-    <div className="flex h-screen flex-col bg-bg text-sm">
+    <div className="flex h-full flex-col overflow-hidden bg-bg text-sm">
       {disclaimer.open && <DisclaimerModal onAccept={disclaimer.accept} />}
       <SettingsModal />
       {toast && (
@@ -388,7 +397,7 @@ function App() {
           onCustom={handleCustom}
         />
 
-        <main className="flex min-w-0 flex-1 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <DebugToolbar
             status={translateStatus(currentLang(settings), status)}
             isRunning={isRunning}
@@ -406,7 +415,7 @@ function App() {
             onSaveCustom={handleSaveCustom}
             onLoadCustom={handleLoadCustom}
           />
-          <div className="min-h-0 flex-1 p-3">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 pb-0">
             <CodeEditor
               source={source}
               onChange={setSource}
@@ -414,6 +423,9 @@ function App() {
               scrollKey={frameIndex}
               readOnly={!!trace}
               errors={compileErrors}
+              lang={lang}
+              changedVars={changedVars}
+              activeVar={highlightedVar}
               onEditAgain={() => {
                 stopPlayback();
                 resetTrace();
@@ -421,19 +433,22 @@ function App() {
               editAgainLabel={tr.editAgain}
             />
           </div>
-          <TestPanel onRunSelected={handleCompileRun} onRunAll={(results: TestResult[]) => setTestResults(results)} />
-          <ErrorPanel message={panicMsg} />
-          <Timeline
-            frameIndex={frameIndex}
-            total={trace?.frames?.length ?? 0}
-            onChange={handleTimelineChange}
-            functionName={frame?.function}
-            line={frame?.line}
-            editorLine={frame?.editorLine}
-          />
+          {trace && <VariableChangesBanner changes={varChanges} lang={lang} />}
+          <div className="shrink-0 overflow-hidden">
+            <TestPanel onRunSelected={handleCompileRun} onRunAll={(results: TestResult[]) => setTestResults(results)} />
+            <ErrorPanel message={panicMsg} />
+            <Timeline
+              frameIndex={frameIndex}
+              total={trace?.frames?.length ?? 0}
+              onChange={handleTimelineChange}
+              functionName={frame?.function}
+              line={frame?.line}
+              editorLine={frame?.editorLine}
+            />
+          </div>
         </main>
 
-        <aside className="flex w-96 flex-col border-l border-border bg-panel">
+        <aside className="flex w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-panel">
           <div className="flex border-b border-border">
             <TabButton active={rightTab === 'vars'} onClick={() => setRightTab('vars')}>
               {tr.variables}

@@ -15,6 +15,7 @@ func toModel(s settings.AppSettings) models.AppSettings {
 	return models.AppSettings{
 		Language:      s.Language,
 		Theme:         s.Theme,
+		UIStyle:       s.UIStyle,
 		AccentColor:   s.AccentColor,
 		CustomCodeDir: s.CustomCodeDir,
 		DataDir:       s.DataDir,
@@ -26,6 +27,7 @@ func fromModel(m models.AppSettings) settings.AppSettings {
 	return settings.AppSettings{
 		Language:      m.Language,
 		Theme:         m.Theme,
+		UIStyle:       m.UIStyle,
 		AccentColor:   m.AccentColor,
 		CustomCodeDir: m.CustomCodeDir,
 		DataDir:       m.DataDir,
