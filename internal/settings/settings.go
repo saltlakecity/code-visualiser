@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"visualisator/internal/paths"
 )
 
 // AppSettings persisted user preferences.
@@ -13,17 +15,18 @@ type AppSettings struct {
 	Theme         string `json:"theme"`
 	AccentColor   string `json:"accentColor"`
 	CustomCodeDir string `json:"customCodeDir"`
+	DataDir       string `json:"dataDir"`
 }
 
-// DefaultSettings returns factory defaults.
+// DefaultSettings returns factory defaults (portable: next to exe).
 func DefaultSettings() AppSettings {
-	home, _ := os.UserHomeDir()
-	dir := filepath.Join(home, "Documents", "visualisator")
+	dataDir := paths.DataDir()
 	return AppSettings{
 		Language:      "ru",
 		Theme:         "dark",
 		AccentColor:   "#ffa116",
-		CustomCodeDir: dir,
+		CustomCodeDir: paths.DefaultCustomCodeDir(),
+		DataDir:       dataDir,
 	}
 }
 
@@ -34,20 +37,10 @@ type Store struct {
 	data AppSettings
 }
 
-// NewStore creates settings store at config path.
+// NewStore creates settings store beside the executable.
 func NewStore() (*Store, error) {
-	dir, err := os.UserConfigDir()
-	if err != nil {
-		dir, _ = os.UserHomeDir()
-		dir = filepath.Join(dir, ".visualisator")
-	} else {
-		dir = filepath.Join(dir, "visualisator")
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, err
-	}
 	s := &Store{
-		path: filepath.Join(dir, "settings.json"),
+		path: paths.SettingsPath(),
 		data: DefaultSettings(),
 	}
 	_ = s.Load()
@@ -78,11 +71,15 @@ func (s *Store) Load() error {
 	if data.AccentColor == "" {
 		data.AccentColor = "#ffa116"
 	}
-	if data.CustomCodeDir == "" {
-		data.CustomCodeDir = DefaultSettings().CustomCodeDir
+	if data.DataDir == "" {
+		data.DataDir = paths.DataDir()
 	}
+	if data.CustomCodeDir == "" {
+		data.CustomCodeDir = filepath.Join(data.DataDir, "custom")
+	}
+	_ = os.MkdirAll(data.DataDir, 0o755)
+	_ = os.MkdirAll(data.CustomCodeDir, 0o755)
 	s.data = data
-	_ = os.MkdirAll(s.data.CustomCodeDir, 0o755)
 	return nil
 }
 
@@ -97,10 +94,15 @@ func (s *Store) Get() AppSettings {
 func (s *Store) Save(data AppSettings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.data = data
-	if s.data.CustomCodeDir != "" {
-		_ = os.MkdirAll(s.data.CustomCodeDir, 0o755)
+	if data.DataDir == "" {
+		data.DataDir = paths.DataDir()
 	}
+	if data.CustomCodeDir == "" {
+		data.CustomCodeDir = filepath.Join(data.DataDir, "custom")
+	}
+	s.data = data
+	_ = os.MkdirAll(s.data.DataDir, 0o755)
+	_ = os.MkdirAll(s.data.CustomCodeDir, 0o755)
 	return s.saveLocked()
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"visualisator/internal/models"
+	"visualisator/internal/paths"
 	"visualisator/internal/settings"
 )
 
@@ -16,6 +17,7 @@ func toModel(s settings.AppSettings) models.AppSettings {
 		Theme:         s.Theme,
 		AccentColor:   s.AccentColor,
 		CustomCodeDir: s.CustomCodeDir,
+		DataDir:       s.DataDir,
 	}
 }
 
@@ -25,7 +27,13 @@ func fromModel(m models.AppSettings) settings.AppSettings {
 		Theme:         m.Theme,
 		AccentColor:   m.AccentColor,
 		CustomCodeDir: m.CustomCodeDir,
+		DataDir:       m.DataDir,
 	}
+}
+
+// GetDataDir returns the application data directory path.
+func (a *App) GetDataDir() string {
+	return paths.DataDir()
 }
 
 // GetSettings returns persisted app settings.

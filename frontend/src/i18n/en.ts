@@ -37,6 +37,7 @@ export const en = {
     theme: 'Theme',
     accentColor: 'Accent color',
     customCodeDir: 'Custom code folder',
+    dataDir: 'Application data folder',
     browse: 'Browse',
     save: 'Save',
     cancel: 'Cancel',

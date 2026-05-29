@@ -33,7 +33,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     try {
       const s = await GetSettings();
       set({
-        settings: new models.AppSettings({ ...defaults, ...s }),
+        settings: new models.AppSettings({
+          language: s.language || 'ru',
+          theme: s.theme || 'dark',
+          accentColor: s.accentColor || '#ffa116',
+          customCodeDir: s.customCodeDir || '',
+          dataDir: s.dataDir || '',
+        }),
         loaded: true,
       });
       get().applyTheme();

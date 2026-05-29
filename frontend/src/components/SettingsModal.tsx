@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PickCustomCodeDir } from '../../wailsjs/go/app/App';
+import { GetDataDir, PickCustomCodeDir } from '../../wailsjs/go/app/App';
 import { t, type Language } from '../i18n';
 import { models } from '../../wailsjs/go/models';
 import { useSettingsStore, type AppSettings } from '../store/settingsStore';
@@ -11,7 +11,12 @@ export function SettingsModal() {
   const tr = t(lang);
 
   useEffect(() => {
-    if (settingsOpen) setDraft(settings);
+    if (settingsOpen) {
+      setDraft(settings);
+      if (!settings.dataDir) {
+        GetDataDir().then((dir) => setDraft((d) => ({ ...d, dataDir: dir })));
+      }
+    }
   }, [settingsOpen, settings]);
 
   if (!settingsOpen) return null;
@@ -70,6 +75,17 @@ export function SettingsModal() {
             className="flex-1 rounded-md border border-border bg-bg px-3 py-2 font-mono text-sm"
           />
         </div>
+
+        <label className="mt-3 block text-xs text-muted">{tr.settings.dataDir}</label>
+        <input
+          type="text"
+          readOnly
+          value={draft.dataDir || ''}
+          className="mt-1 w-full rounded-md border border-border bg-bg px-3 py-2 text-xs text-muted"
+        />
+        <p className="mt-1 text-[10px] text-muted">
+          settings.json и сессии хранятся здесь (рядом с visualisator.exe)
+        </p>
 
         <label className="mt-3 block text-xs text-muted">{tr.settings.customCodeDir}</label>
         <div className="mt-1 flex gap-2">

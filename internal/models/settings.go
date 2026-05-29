@@ -6,4 +6,5 @@ type AppSettings struct {
 	Theme         string `json:"theme"`
 	AccentColor   string `json:"accentColor"`
 	CustomCodeDir string `json:"customCodeDir"`
+	DataDir       string `json:"dataDir"`
 }

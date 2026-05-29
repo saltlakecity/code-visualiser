@@ -5,6 +5,7 @@ export namespace models {
 	    theme: string;
 	    accentColor: string;
 	    customCodeDir: string;
+	    dataDir: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -16,6 +17,7 @@ export namespace models {
 	        this.theme = source["theme"];
 	        this.accentColor = source["accentColor"];
 	        this.customCodeDir = source["customCodeDir"];
+	        this.dataDir = source["dataDir"];
 	    }
 	}
 	export class CompileError {
@@ -40,6 +42,9 @@ export namespace models {
 	    success: boolean;
 	    sessionId: string;
 	    binaryPath?: string;
+	    compiledSource?: string;
+	    debugFile?: string;
+	    editorLineOffset: number;
 	    errors?: CompileError[];
 	
 	    static createFrom(source: any = {}) {
@@ -51,6 +56,9 @@ export namespace models {
 	        this.success = source["success"];
 	        this.sessionId = source["sessionId"];
 	        this.binaryPath = source["binaryPath"];
+	        this.compiledSource = source["compiledSource"];
+	        this.debugFile = source["debugFile"];
+	        this.editorLineOffset = source["editorLineOffset"];
 	        this.errors = this.convertValues(source["errors"], CompileError);
 	    }
 	
@@ -320,6 +328,7 @@ export namespace models {
 	    index: number;
 	    file: string;
 	    line: number;
+	    editorLine: number;
 	    function: string;
 	    variables: Variable[];
 	    stack: StackFrame[];
@@ -334,6 +343,7 @@ export namespace models {
 	        this.index = source["index"];
 	        this.file = source["file"];
 	        this.line = source["line"];
+	        this.editorLine = source["editorLine"];
 	        this.function = source["function"];
 	        this.variables = this.convertValues(source["variables"], Variable);
 	        this.stack = this.convertValues(source["stack"], StackFrame);

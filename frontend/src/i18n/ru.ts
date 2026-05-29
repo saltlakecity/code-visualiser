@@ -39,6 +39,7 @@ export const ru: Locale = {
     theme: 'Тема',
     accentColor: 'Акцентный цвет',
     customCodeDir: 'Папка для своего кода',
+    dataDir: 'Папка данных приложения',
     browse: 'Обзор',
     save: 'Сохранить',
     cancel: 'Отмена',

@@ -27,6 +27,9 @@ export interface CompileResult {
   success: boolean;
   sessionId: string;
   binaryPath?: string;
+  compiledSource?: string;
+  debugFile?: string;
+  editorLineOffset?: number;
   errors?: CompileError[];
 }
 
@@ -56,6 +59,7 @@ export interface TraceFrame {
   index: number;
   file: string;
   line: number;
+  editorLine?: number;
   function: string;
   variables: Variable[];
   stack: StackFrame[];

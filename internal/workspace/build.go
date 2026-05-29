@@ -11,7 +11,13 @@ import (
 	"github.com/google/uuid"
 
 	"visualisator/internal/models"
+	"visualisator/internal/paths"
 )
+
+// BuildRoot returns directory for temporary compile sessions.
+func BuildRoot() string {
+	return paths.TempBuildDir()
+}
 
 const moduleName = "usercode"
 

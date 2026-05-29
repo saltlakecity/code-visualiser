@@ -26,10 +26,13 @@ type TestCase struct {
 
 // CompileResult from go build.
 type CompileResult struct {
-	Success bool           `json:"success"`
-	Session string         `json:"sessionId"`
-	Binary  string         `json:"binaryPath,omitempty"`
-	Errors  []CompileError `json:"errors,omitempty"`
+	Success          bool           `json:"success"`
+	Session          string         `json:"sessionId"`
+	Binary           string         `json:"binaryPath,omitempty"`
+	CompiledSource   string         `json:"compiledSource,omitempty"`
+	DebugFile        string         `json:"debugFile,omitempty"`
+	EditorLineOffset int            `json:"editorLineOffset"`
+	Errors           []CompileError `json:"errors,omitempty"`
 }
 
 // CompileError is a compiler diagnostic.
@@ -55,10 +58,11 @@ type Trace struct {
 
 // TraceFrame is one debugger snapshot.
 type TraceFrame struct {
-	Index     int            `json:"index"`
-	File      string         `json:"file"`
-	Line      int            `json:"line"`
-	Function  string         `json:"function"`
+	Index      int            `json:"index"`
+	File       string         `json:"file"`
+	Line       int            `json:"line"`
+	EditorLine int            `json:"editorLine"`
+	Function   string         `json:"function"`
 	Variables []Variable     `json:"variables"`
 	Stack     []StackFrame   `json:"stack"`
 	Viz       []VizModel     `json:"viz"`

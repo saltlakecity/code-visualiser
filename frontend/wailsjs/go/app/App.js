@@ -6,6 +6,10 @@ export function Compile(arg1, arg2, arg3) {
   return window['go']['app']['App']['Compile'](arg1, arg2, arg3);
 }
 
+export function GetDataDir() {
+  return window['go']['app']['App']['GetDataDir']();
+}
+
 export function GetFrame(arg1, arg2) {
   return window['go']['app']['App']['GetFrame'](arg1, arg2);
 }
@@ -40,6 +44,10 @@ export function LoadCustomCode(arg1) {
 
 export function LoadProblem(arg1) {
   return window['go']['app']['App']['LoadProblem'](arg1);
+}
+
+export function LogClient(arg1) {
+  return window['go']['app']['App']['LogClient'](arg1);
 }
 
 export function PickCustomCodeDir() {

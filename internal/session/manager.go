@@ -2,8 +2,6 @@ package session
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -27,16 +25,19 @@ type Manager struct {
 }
 
 type entry struct {
-	paths    *workspace.SessionPaths
-	debug    *debugger.Session
-	mode     string
-	source   string
-	done     chan struct{}
+	paths           *workspace.SessionPaths
+	debug           *debugger.Session
+	mode            string
+	source          string
+	compiledSource  string
+	debugFile       string
+	editorLineOffset int
+	done            chan struct{}
 }
 
 // NewManager creates a session manager.
 func NewManager() (*Manager, error) {
-	base := filepath.Join(os.TempDir(), "visualisator")
+	base := workspace.BuildRoot()
 	b, err := workspace.NewBuilder(base)
 	if err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 		mode = workspace.DetectMode(source)
 	}
 
+	editorSource := source
 	prepared, stubMain, err := workspace.PrepareUserSource(source, mode)
 	if err != nil {
 		return models.CompileResult{Success: false, Errors: []models.CompileError{{
@@ -109,9 +111,26 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 		m.builder.Cleanup(paths.ID)
 		return result, nil
 	}
+	debugFile := "main.go"
+	if mode == "function_wrapper" {
+		debugFile = "solution.go"
+	}
+	offset := workspace.EditorLineOffset(editorSource, prepared)
+
 	m.mu.Lock()
-	m.sessions[paths.ID] = &entry{paths: paths, mode: mode, source: source}
+	m.sessions[paths.ID] = &entry{
+		paths:            paths,
+		mode:             mode,
+		source:           source,
+		compiledSource:   prepared,
+		debugFile:        debugFile,
+		editorLineOffset: offset,
+	}
 	m.mu.Unlock()
+
+	result.CompiledSource = prepared
+	result.DebugFile = debugFile
+	result.EditorLineOffset = offset
 	return result, nil
 }
 
@@ -141,7 +160,7 @@ func (m *Manager) StartDebug(sessionID string, opts models.RunOptions) error {
 	e.done = done
 	go func() {
 		defer close(done)
-		_, runErr := dbg.RunToEnd(maxSteps)
+		_, runErr := dbg.RunToEnd(maxSteps, e.editorLineOffset)
 		trace := dbg.Recorder().Trace(sessionID)
 		m.mu.Lock()
 		cb := m.onDebugComplete

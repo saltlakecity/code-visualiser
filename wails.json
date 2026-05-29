@@ -6,6 +6,8 @@
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
+  "build:ldflags": "-H windowsgui",
+  "build:tags": "native_webview2loader",
   "author": {
     "name": "saltlakecity",
     "email": "pazhilaya.chichimra@mail.ru"

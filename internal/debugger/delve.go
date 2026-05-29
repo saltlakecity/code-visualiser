@@ -15,9 +15,9 @@ import (
 
 var loadCfg = proc.LoadConfig{
 	FollowPointers:     true,
-	MaxVariableRecurse: 5,
-	MaxStringLen:       256,
-	MaxArrayValues:     64,
+	MaxVariableRecurse: 6,
+	MaxStringLen:       512,
+	MaxArrayValues:     128,
 	MaxStructFields:    -1,
 }
 
@@ -60,20 +60,17 @@ func NewSession(binaryPath, workDir string, timeout time.Duration) (*Session, er
 }
 
 func (s *Session) breakAtMain() error {
-	// Stop at program entry before main runs
 	_, err := s.dbg.CreateBreakpoint(&api.Breakpoint{}, "main.main", nil, false)
 	if err != nil {
-		// fallback: break on package main source
 		mainFile := filepath.Join(s.workDir, "main.go")
 		_, err = s.dbg.CreateBreakpoint(&api.Breakpoint{}, mainFile+":1", nil, false)
 		if err != nil {
-			// last resort: halt immediately
 			state, herr := s.cmd(&api.DebuggerCommand{Name: api.Halt})
 			if herr != nil {
-				return fmt.Errorf("breakpoint: %w (halt: %v)", err, herr)
+				return fmt.Errorf("breakpoint: %w", err)
 			}
 			if state != nil && !state.Exited && !state.Running {
-				_, _ = s.captureState(state)
+				_, _ = s.captureState(state, 0)
 			}
 			return nil
 		}
@@ -84,7 +81,7 @@ func (s *Session) breakAtMain() error {
 		return fmt.Errorf("continue to main: %w", err)
 	}
 	if state != nil && !state.Exited && !state.Running {
-		_, _ = s.captureState(state)
+		_, _ = s.captureState(state, 0)
 	}
 	return nil
 }
@@ -108,7 +105,7 @@ func (s *Session) Step(command string) (*models.StepResult, error) {
 	if err != nil {
 		return &models.StepResult{Error: err.Error()}, err
 	}
-	return s.processState(state)
+	return s.processState(state, 0)
 }
 
 func commandName(command string) (string, error) {
@@ -129,9 +126,9 @@ func commandName(command string) (string, error) {
 }
 
 // RunToEnd steps through until the program exits or maxSteps reached.
-func (s *Session) RunToEnd(maxSteps int) (*models.Trace, error) {
+func (s *Session) RunToEnd(maxSteps int, editorLineOffset int) (*models.Trace, error) {
 	if maxSteps <= 0 {
-		maxSteps = 500
+		maxSteps = 800
 	}
 
 	for i := 0; i < maxSteps; i++ {
@@ -146,28 +143,21 @@ func (s *Session) RunToEnd(maxSteps int) (*models.Trace, error) {
 			break
 		}
 
-		if !state.Running {
-			_, _ = s.captureState(state)
+		if !state.Running && state.CurrentThread != nil && shouldRecordFrame(state, state.CurrentThread) {
+			_, _ = s.captureState(state, editorLineOffset)
 		}
 
 		cmdName := api.Next
 		if state.CurrentThread != nil && isUserSource(basename(state.CurrentThread.File)) {
-			cmdName = api.Step // step into calls to see algorithm code
+			cmdName = api.Step
 		}
+
 		nextState, err := s.cmd(&api.DebuggerCommand{Name: cmdName})
-		if err != nil {
+		if err != nil || nextState == nil || nextState.Exited {
 			break
 		}
-		if nextState == nil || nextState.Exited {
-			if nextState != nil && !nextState.Running {
-				_, _ = s.captureState(nextState)
-			}
-			break
-		}
-		if !nextState.Running {
-			if _, err := s.processState(nextState); err != nil {
-				break
-			}
+		if !nextState.Running && shouldRecordFrame(nextState, nextState.CurrentThread) {
+			_, _ = s.captureState(nextState, editorLineOffset)
 		}
 	}
 
@@ -176,7 +166,25 @@ func (s *Session) RunToEnd(maxSteps int) (*models.Trace, error) {
 	return &trace, nil
 }
 
-func (s *Session) processState(state *api.DebuggerState) (*models.StepResult, error) {
+func shouldRecordFrame(state *api.DebuggerState, thread *api.Thread) bool {
+	if thread == nil {
+		return false
+	}
+	file := basename(thread.File)
+	if !isUserSource(file) {
+		return false
+	}
+	fn := ""
+	if thread.Function != nil {
+		fn = thread.Function.Name()
+	}
+	if strings.Contains(fn, "runtime.") {
+		return false
+	}
+	return true
+}
+
+func (s *Session) processState(state *api.DebuggerState, editorLineOffset int) (*models.StepResult, error) {
 	if state == nil {
 		return &models.StepResult{Finished: true}, nil
 	}
@@ -203,7 +211,7 @@ func (s *Session) processState(state *api.DebuggerState) (*models.StepResult, er
 		return &models.StepResult{Finished: false}, nil
 	}
 
-	frame, err := s.captureState(state)
+	frame, err := s.captureState(state, editorLineOffset)
 	if err != nil {
 		return nil, err
 	}
@@ -211,9 +219,9 @@ func (s *Session) processState(state *api.DebuggerState) (*models.StepResult, er
 	return &models.StepResult{Frame: frame, Trace: &trace, Finished: false}, nil
 }
 
-func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, error) {
+func (s *Session) captureState(state *api.DebuggerState, editorLineOffset int) (*models.TraceFrame, error) {
 	thread := state.CurrentThread
-	if thread == nil {
+	if thread == nil || !shouldRecordFrame(state, thread) {
 		return nil, nil
 	}
 
@@ -243,15 +251,7 @@ func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, er
 		}
 	}
 
-	var vars []models.Variable
-	if goid >= 0 {
-		procVars, err := s.dbg.LocalVariables(goid, 0, 0, loadCfg)
-		if err == nil {
-			for _, v := range api.ConvertVars(procVars) {
-				vars = append(vars, convertVariable(v))
-			}
-		}
-	}
+	vars := s.collectVariables(goid)
 
 	fn := ""
 	if thread.Function != nil {
@@ -260,30 +260,43 @@ func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, er
 
 	file := basename(thread.File)
 	line := thread.Line
-	if (file == "" || line == 0) && len(stack) > 0 {
-		for _, sf := range stack {
-			if isUserSource(sf.File) {
-				file = sf.File
-				line = sf.Line
-				fn = sf.Function
-				break
-			}
-		}
-		if file == "" {
-			file = stack[0].File
-			line = stack[0].Line
-			fn = stack[0].Function
-		}
+
+	debugLine := line
+	editorLine := line - editorLineOffset
+	if editorLine < 1 {
+		editorLine = debugLine
 	}
 
-	if file == "" {
-		return nil, nil
-	}
-
-	tf := BuildFrame(file, line, fn, vars, stack)
+	tf := BuildFrame(file, debugLine, editorLine, fn, vars, stack)
 	s.recorder.Append(tf)
 	s.recorder.SetStatus("paused", "")
 	return &tf, nil
+}
+
+func (s *Session) collectVariables(goid int64) []models.Variable {
+	if goid < 0 {
+		return nil
+	}
+	seen := make(map[string]bool)
+	var vars []models.Variable
+
+	add := func(pv []*proc.Variable) {
+		for _, p := range api.ConvertVars(pv) {
+			if p.Name == "" || seen[p.Name] {
+				continue
+			}
+			seen[p.Name] = true
+			vars = append(vars, convertVariable(p))
+		}
+	}
+
+	if args, err := s.dbg.FunctionArguments(goid, 0, 0, loadCfg); err == nil {
+		add(args)
+	}
+	if locals, err := s.dbg.LocalVariables(goid, 0, 0, loadCfg); err == nil {
+		add(locals)
+	}
+	return vars
 }
 
 func isUserSource(file string) bool {

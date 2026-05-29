@@ -78,7 +78,7 @@ func (r *Recorder) Trace(sessionID string) models.Trace {
 // FrameAt returns frame by index.
 func (r *Recorder) FrameAt(index int) *models.TraceFrame {
 	r.mu.RLock()
-	defer r.mu.Unlock()
+	defer r.mu.RUnlock()
 	if index < 0 || index >= len(r.frames) {
 		return nil
 	}
@@ -94,16 +94,20 @@ func (r *Recorder) Count() int {
 }
 
 // BuildFrame constructs a TraceFrame from debugger state.
-func BuildFrame(file string, line int, function string, vars []models.Variable, stack []models.StackFrame) models.TraceFrame {
+func BuildFrame(file string, line, editorLine int, function string, vars []models.Variable, stack []models.StackFrame) models.TraceFrame {
 	highlight := viz.DetectHighlights(vars)
 	vizModels := viz.Extract(vars, highlight)
+	if editorLine <= 0 {
+		editorLine = line
+	}
 	return models.TraceFrame{
-		File:      basename(file),
-		Line:      line,
-		Function:  function,
-		Variables: vars,
-		Stack:     stack,
-		Viz:       vizModels,
+		File:       basename(file),
+		Line:       line,
+		EditorLine: editorLine,
+		Function:   function,
+		Variables:  vars,
+		Stack:      stack,
+		Viz:        vizModels,
 	}
 }
 

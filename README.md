@@ -1,77 +1,86 @@
-# Go Code Visualizer
+# Go Code Visualizer (visualisator)
 
-Desktop application for step-by-step visualization of Go algorithms. Built with **Wails v2**, **Delve**, **React**, and **Monaco Editor**.
-
-Inspired by NeetCode-style visualizers: watch variables, call stack, current line, and data structure views (arrays, linked lists, trees).
-
-## Features
-
-- **Russian / English UI** — switch language in Settings
-- **Settings** — theme (dark/light), accent color, folder for saved custom code
-- **Auto-imports** — `goimports` adds standard library imports (`sort`, `fmt`, etc.) automatically
-- **Save custom code** — persist your snippets to a folder on disk
-- **Problem catalog** — 8 built-in algorithm problems (Two Sum, Binary Search, Linked List, Trees, DP, and more)
-- **Custom code mode** — paste a full `main` program or just algorithm functions
-- **Delve debugger** — full Go execution via embedded Delve (variables, pointers, structs)
-- **Trace replay** — timeline slider to step backward/forward through recorded frames
-- **Visualizations** — arrays with index highlights, linked lists and trees via React Flow
-- **Error highlighting** — compile errors and runtime panics shown on the correct line
+Desktop app for step-through Go code visualization (Wails + Delve + React).
 
 ## Requirements
 
-- Windows 10/11 (primary target)
-- [Go 1.22+](https://go.dev/dl/) — required to compile user code at runtime
-- Optional: `goimports` on PATH (otherwise the app uses bundled `golang.org/x/tools/imports`)
-- [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) — usually preinstalled on Windows 11
-- [Node.js 18+](https://nodejs.org/) — for frontend development only
+- Go 1.22+
+- [Node.js](https://nodejs.org/) 18+
+- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (usually preinstalled on Windows 11)
+- `go`, `dlv` on `PATH` for compile/debug
 
-## Quick Start
+## Build and run (Windows)
 
-### Run from source
+**Always use Wails** — do not use plain `go build` for the desktop app.
 
-```bash
-# Install Wails CLI (once)
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-# Development (hot reload)
+```powershell
 cd c:\work\visualisator
-wails dev
-```
-
-### Run release build
-
-```bash
 wails build
 .\build\bin\visualisator.exe
 ```
 
+The release binary is a **GUI app** (`-H windowsgui` in `wails.json`). You should **not** see a console window flash. If you do, rebuild with `wails build` (not `go run` / not `go build`).
+
+### Dev mode (hot reload)
+
+```powershell
+wails dev
+```
+
+## Troubleshooting startup
+
+Log file: `data\app.log` next to `visualisator.exe` (created on first run).
+
+**Healthy startup:**
+
+```
+main: start exe=...
+lifecycle: dom ready
+main: exit ok
+```
+
+(`main: exit ok` appears only after you close the window.)
+
+If the log shows `dom ready` but there is no window:
+
+1. Check the taskbar / **Alt+Tab** for «Go Code Visualizer».
+2. Delete WebView cache: `Remove-Item -Recurse -Force .\data\webview2`
+3. Rebuild: `wails build`
+4. Do **not** use `wails build -windowsconsole` unless you need a console for debugging.
+
+Debug build (DevTools + console):
+
+```powershell
+wails build -debug
+.\build\bin\visualisator.exe
+```
+
+## Portable data
+
+```
+visualisator.exe
+data/
+  settings.json
+  custom/
+  sessions/
+  app.log
+```
+
 ## Usage
 
-1. Pick a problem from the sidebar or choose **Custom Code**
-2. Click **Run** — code compiles in a temp workspace (`%TEMP%\visualisator\`)
-3. Use **Next / Step In / Step Out / Continue** while debugging, or scrub the **timeline** after the run
-4. Inspect **Variables**, **Call Stack**, and **Visualization** panels on the right
+1. Pick a problem or **Custom Code**
+2. **Run** — compile + debug trace
+3. Step / timeline / variables / visualization (graphs load when trace has structures)
 
-## Security Notice
+Code editor is a lightweight text area (Monaco removed to keep WebView2 stable in production builds).
 
-User code runs locally with your user permissions inside a subprocess. A 30-second timeout and process kill are applied per session. Imports such as `os/exec`, `net`, and `syscall` are blocked in sandbox scan mode.
+## Windows installer
 
-## Project Structure
-
-```
-visualisator/
-├── main.go                 # Wails entry
-├── internal/
-│   ├── app/                # Wails API bindings
-│   ├── debugger/           # Delve integration + trace recorder
-│   ├── workspace/          # Temp dirs, go build, import scan
-│   ├── viz/                # Variable → visualization models
-│   ├── problems/           # Embedded problem catalog
-│   └── session/            # Session manager
-├── frontend/               # React + Tailwind + Monaco UI
-└── problems/data/          # Problem JSON definitions
+```powershell
+wails build -nsis
 ```
 
-## License
+## Application icon
 
-MIT
+Place `build/appicon.png`, then rebuild. See Wails docs for `wails generate icons`.

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import {
   Compile,
@@ -19,7 +19,7 @@ import { DebugToolbar } from './components/DebugToolbar';
 import { Timeline } from './components/Timeline';
 import { VariablesTree } from './components/VariablesTree';
 import { CallStack } from './components/CallStack';
-import { VizPanel } from './components/VizPanel';
+const VizPanel = lazy(() => import('./components/VizPanel').then((m) => ({ default: m.VizPanel })));
 import { TestPanel } from './components/TestPanel';
 import { ErrorPanel } from './components/ErrorPanel';
 import { DisclaimerModal, useDisclaimer } from './components/DisclaimerModal';
@@ -185,6 +185,10 @@ function App() {
       return;
     }
 
+    if (res.compiledSource?.trim()) {
+      setSource(res.compiledSource);
+    }
+
     const sid = res.sessionId;
     if (!sid) {
       setPanicMsg('Compile succeeded but session id is missing');
@@ -297,6 +301,7 @@ function App() {
               source={source}
               onChange={setSource}
               currentLine={frame?.line}
+              editorLine={frame?.editorLine ?? frame?.line}
               currentFile={frame?.file}
               errors={compileErrors}
             />
@@ -330,7 +335,13 @@ function App() {
             <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase text-muted">
               {tr.visualization}
             </div>
-            <VizPanel models={frame?.viz ?? []} />
+            {(frame?.viz?.length ?? 0) > 0 ? (
+              <Suspense fallback={<div className="p-4 text-xs text-muted">…</div>}>
+                <VizPanel models={frame?.viz ?? []} />
+              </Suspense>
+            ) : (
+              <div className="flex h-full items-center justify-center p-4 text-xs text-muted">{tr.vizEmpty}</div>
+            )}
           </div>
         </aside>
       </div>

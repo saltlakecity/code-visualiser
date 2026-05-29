@@ -4,6 +4,8 @@ import {models} from '../models';
 
 export function Compile(arg1:string,arg2:string,arg3:string):Promise<models.CompileResult>;
 
+export function GetDataDir():Promise<string>;
+
 export function GetFrame(arg1:string,arg2:number):Promise<models.TraceFrame>;
 
 export function GetSettings():Promise<models.AppSettings>;
@@ -21,6 +23,8 @@ export function ListProblems():Promise<Array<models.ProblemMeta>>;
 export function LoadCustomCode(arg1:string):Promise<string>;
 
 export function LoadProblem(arg1:string):Promise<models.Problem>;
+
+export function LogClient(arg1:string):Promise<void>;
 
 export function PickCustomCodeDir():Promise<string>;
 

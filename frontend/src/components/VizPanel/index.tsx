@@ -1,8 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { t } from '../../i18n';
 import { useSettingsStore, currentLang } from '../../store/settingsStore';
 import type { VizModel } from '../../types';
 import { ArrayViz } from './ArrayViz';
-import { GraphViz } from './GraphViz';
+
+const GraphViz = lazy(() => import('./GraphViz').then((m) => ({ default: m.GraphViz })));
 
 export function VizPanel({ models }: { models: VizModel[] }) {
   const { settings } = useSettingsStore();
@@ -23,7 +25,11 @@ export function VizPanel({ models }: { models: VizModel[] }) {
           return <ArrayViz key={m.name} model={m} />;
         }
         if (m.type === 'linked_list' || m.type === 'tree' || m.type === 'map') {
-          return <GraphViz key={m.name} model={m} />;
+          return (
+            <Suspense key={m.name} fallback={<div className="p-2 text-xs text-muted">…</div>}>
+              <GraphViz model={m} />
+            </Suspense>
+          );
         }
         return null;
       })}

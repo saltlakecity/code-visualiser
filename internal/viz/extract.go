@@ -13,24 +13,39 @@ var intRe = regexp.MustCompile(`^-?\d+$`)
 // DetectHighlights finds index variables to highlight in arrays.
 func DetectHighlights(vars []models.Variable) []int {
 	var highlights []int
-	for _, v := range vars {
-		nameLower := strings.ToLower(v.Name)
-		for _, hn := range HighlightVars {
-			if nameLower == hn && intRe.MatchString(strings.TrimSpace(v.Value)) {
-				if idx, err := strconv.Atoi(strings.TrimSpace(v.Value)); err == nil {
+	seen := make(map[int]bool)
+	add := func(name string) {
+		nameLower := strings.ToLower(name)
+		for _, v := range vars {
+			if strings.ToLower(v.Name) != nameLower {
+				continue
+			}
+			val := strings.TrimSpace(v.Value)
+			if intRe.MatchString(val) {
+				if idx, err := strconv.Atoi(val); err == nil && idx >= 0 && !seen[idx] {
+					seen[idx] = true
 					highlights = append(highlights, idx)
 				}
 			}
 		}
 	}
+	for _, hn := range HighlightVars {
+		add(hn)
+	}
+	add("k") // common alias in duplicate check
 	return highlights
 }
 
 // Extract builds visualization models from variables.
 func Extract(vars []models.Variable, highlight []int) []models.VizModel {
 	var out []models.VizModel
+	seen := make(map[string]bool)
 	for _, v := range vars {
+		if seen[v.Name] {
+			continue
+		}
 		if vm := extractOne(v, highlight); vm != nil {
+			seen[v.Name] = true
 			out = append(out, *vm)
 		}
 	}
@@ -38,9 +53,15 @@ func Extract(vars []models.Variable, highlight []int) []models.VizModel {
 }
 
 func extractOne(v models.Variable, highlight []int) *models.VizModel {
-	typeLower := strings.ToLower(v.Type)
+	typeLower := strings.ToLower(strings.TrimSpace(v.Type))
+	valLower := strings.ToLower(v.Value)
 
-	if strings.HasPrefix(typeLower, "[]") || strings.HasPrefix(typeLower, "[") {
+	isSlice := strings.HasPrefix(typeLower, "[]") ||
+		strings.HasPrefix(typeLower, "[") ||
+		strings.Contains(valLower, "len:") ||
+		strings.Contains(typeLower, "slice")
+
+	if isSlice {
 		vals := parseSliceValues(v)
 		if len(vals) > 0 {
 			return &models.VizModel{
@@ -69,22 +90,48 @@ func extractOne(v models.Variable, highlight []int) *models.VizModel {
 
 func parseSliceValues(v models.Variable) []string {
 	if len(v.Children) > 0 {
-		var vals []string
+		vals := make([]string, 0, len(v.Children))
 		for _, c := range v.Children {
-			vals = append(vals, strings.TrimSpace(c.Value))
+			vals = append(vals, formatChildValue(c))
 		}
 		return vals
 	}
-	inner := strings.Trim(v.Value, "[]")
+	inner := strings.TrimSpace(v.Value)
+	for _, prefix := range []string{"]int", "[]string", "[]"} {
+		if idx := strings.Index(inner, prefix); idx >= 0 {
+			inner = inner[idx+len(prefix):]
+			break
+		}
+	}
+	inner = strings.TrimPrefix(inner, "len:")
+	if i := strings.Index(inner, "len:"); i >= 0 {
+		inner = inner[:i]
+	}
+	inner = strings.Trim(inner, "[]")
 	if inner == "" {
 		return nil
 	}
 	parts := strings.Split(inner, ",")
 	var vals []string
 	for _, p := range parts {
-		vals = append(vals, strings.TrimSpace(p))
+		p = strings.TrimSpace(p)
+		if p != "" {
+			vals = append(vals, p)
+		}
 	}
 	return vals
+}
+
+func formatChildValue(c models.Variable) string {
+	val := strings.TrimSpace(c.Value)
+	if val == "" && len(c.Children) > 0 {
+		val = strings.TrimSpace(c.Children[0].Value)
+	}
+	// [0]: 1 format
+	if idx := strings.LastIndex(val, ":"); idx >= 0 {
+		val = strings.TrimSpace(val[idx+1:])
+	}
+	return val
 }
 
 func extractMap(v models.Variable) *models.VizModel {

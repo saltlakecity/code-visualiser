@@ -58,7 +58,7 @@ func main() {
 	done := make(chan struct{})
 	var trace *models.Trace
 	go func() {
-		tr, err := s.RunToEnd(200)
+		tr, err := s.RunToEnd(200, 0)
 		if err != nil {
 			t.Logf("run error: %v", err)
 		}
