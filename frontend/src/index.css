@@ -75,3 +75,48 @@ body,
 .bg-error\/10 {
   background-color: color-mix(in srgb, var(--color-error) 10%, transparent) !important;
 }
+
+/* Go syntax highlighting (Prism tokens) */
+.go-editor .token.comment,
+.go-editor .token.prolog,
+.go-editor .token.doctype,
+.go-editor .token.cdata {
+  color: #6a737d;
+}
+.go-editor .token.punctuation {
+  color: #8b8b9e;
+}
+.go-editor .token.property,
+.go-editor .token.tag,
+.go-editor .token.boolean,
+.go-editor .token.number,
+.go-editor .token.constant,
+.go-editor .token.symbol {
+  color: #79c0ff;
+}
+.go-editor .token.selector,
+.go-editor .token.attr-name,
+.go-editor .token.string,
+.go-editor .token.char,
+.go-editor .token.builtin {
+  color: #a5d6ff;
+}
+.go-editor .token.operator,
+.go-editor .token.entity,
+.go-editor .token.url {
+  color: #e8e8ef;
+}
+.go-editor .token.atrule,
+.go-editor .token.attr-value,
+.go-editor .token.keyword {
+  color: #ff7b72;
+}
+.go-editor .token.function,
+.go-editor .token.class-name {
+  color: #d2a8ff;
+}
+.go-editor .token.regex,
+.go-editor .token.important,
+.go-editor .token.variable {
+  color: #ffa657;
+}

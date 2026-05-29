@@ -11,11 +11,12 @@ import (
 
 // AppSettings persisted user preferences.
 type AppSettings struct {
-	Language      string `json:"language"`
-	Theme         string `json:"theme"`
-	AccentColor   string `json:"accentColor"`
-	CustomCodeDir string `json:"customCodeDir"`
-	DataDir       string `json:"dataDir"`
+	Language      string  `json:"language"`
+	Theme         string  `json:"theme"`
+	AccentColor   string  `json:"accentColor"`
+	CustomCodeDir string  `json:"customCodeDir"`
+	DataDir       string  `json:"dataDir"`
+	PlaybackSpeed float64 `json:"playbackSpeed"`
 }
 
 // DefaultSettings returns factory defaults (portable: next to exe).
@@ -27,6 +28,7 @@ func DefaultSettings() AppSettings {
 		AccentColor:   "#ffa116",
 		CustomCodeDir: paths.DefaultCustomCodeDir(),
 		DataDir:       dataDir,
+		PlaybackSpeed: 1,
 	}
 }
 
@@ -76,6 +78,9 @@ func (s *Store) Load() error {
 	}
 	if data.CustomCodeDir == "" {
 		data.CustomCodeDir = filepath.Join(data.DataDir, "custom")
+	}
+	if data.PlaybackSpeed <= 0 {
+		data.PlaybackSpeed = 1
 	}
 	_ = os.MkdirAll(data.DataDir, 0o755)
 	_ = os.MkdirAll(data.CustomCodeDir, 0o755)

@@ -10,8 +10,8 @@ export function GraphViz({ model }: { model: VizModel }) {
       position: { x: n.x ?? 0, y: n.y ?? 0 },
       data: { label: n.label },
       style: {
-        background: '#16161d',
-        border: '1px solid var(--color-accent)',
+        background: n.active ? 'rgba(255,161,22,0.25)' : '#16161d',
+        border: n.active ? '2px solid var(--color-accent)' : '1px solid var(--color-accent)',
         color: '#e8e8ef',
         borderRadius: 8,
         padding: 8,
@@ -19,6 +19,7 @@ export function GraphViz({ model }: { model: VizModel }) {
         fontFamily: 'JetBrains Mono, monospace',
         minWidth: 48,
         textAlign: 'center',
+        boxShadow: n.active ? '0 0 12px rgba(255,161,22,0.4)' : undefined,
       },
     }));
     const edges: Edge[] = (model.edges ?? []).map((e, i) => ({
@@ -33,11 +34,19 @@ export function GraphViz({ model }: { model: VizModel }) {
 
   if (!nodes.length) return null;
 
+  const fitKey = nodes.map((n) => `${n.id}:${n.data.label}:${n.style?.background}`).join('|');
+
   return (
     <div className="h-56 w-full p-2">
       <h3 className="mb-1 font-mono text-xs text-accent">{model.name}</h3>
       <div className="h-48 rounded border border-border">
-        <ReactFlow nodes={nodes} edges={edges} fitView proOptions={{ hideAttribution: true }}>
+        <ReactFlow
+          key={fitKey}
+          nodes={nodes}
+          edges={edges}
+          fitView
+          proOptions={{ hideAttribution: true }}
+        >
           <Background color="#2a2a35" gap={16} />
           <Controls showInteractive={false} />
         </ReactFlow>

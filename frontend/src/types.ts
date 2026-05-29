@@ -12,8 +12,20 @@ export interface Problem extends ProblemMeta {
 }
 
 export interface TestCase {
+  name?: string;
   input: string;
+  args?: string;
+  setup?: string;
   expected: string;
+  hidden?: boolean;
+}
+
+export interface TestResult {
+  index: number;
+  passed: boolean;
+  actual?: string;
+  expected: string;
+  error?: string;
 }
 
 export interface CompileError {
@@ -51,10 +63,14 @@ export interface VizModel {
   type: string;
   name: string;
   values?: string[];
+  rows?: string[][];
   highlight?: number[];
+  highlightNode?: string;
+  rangeHighlight?: { from: number; to: number };
   pointers?: { name: string; index: number }[];
-  nodes?: { id: string; label: string; x?: number; y?: number }[];
+  nodes?: { id: string; label: string; x?: number; y?: number; active?: boolean }[];
   edges?: { from: string; to: string }[];
+  entries?: { key: string; value: string }[];
 }
 
 export interface TraceFrame {

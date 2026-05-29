@@ -1,9 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import {
+  BuildRunnerFromTest,
   Compile,
   GetTrace,
   ListProblems,
+  LoadCustomTests,
   LoadProblem,
   LoadCustomCode,
   RunDebug,
@@ -11,6 +13,7 @@ import {
   Step,
   Stop,
 } from '../wailsjs/go/app/App';
+import { models } from '../wailsjs/go/models';
 import { useDebuggerStore } from './store/debuggerStore';
 import { useSettingsStore } from './store/settingsStore';
 import { ProblemSidebar } from './components/ProblemSidebar';
@@ -19,6 +22,7 @@ import { DebugToolbar } from './components/DebugToolbar';
 import { Timeline } from './components/Timeline';
 import { VariablesTree } from './components/VariablesTree';
 import { CallStack } from './components/CallStack';
+import { ResizableRightPanel } from './components/ResizableRightPanel';
 const VizPanel = lazy(() => import('./components/VizPanel').then((m) => ({ default: m.VizPanel })));
 import { TestPanel } from './components/TestPanel';
 import { ErrorPanel } from './components/ErrorPanel';
@@ -26,10 +30,12 @@ import { DisclaimerModal, useDisclaimer } from './components/DisclaimerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { t, translateStatus } from './i18n';
 import { currentLang } from './store/settingsStore';
-import type { Trace } from './types';
+import type { TestResult, Trace } from './types';
 import { hasSliceLikeVariables } from './utils/vizHelpers';
 
 type RightTab = 'vars' | 'stack';
+
+const BASE_PLAY_MS = 500;
 
 function App() {
   const {
@@ -37,7 +43,6 @@ function App() {
     currentProblem,
     customMode,
     source,
-    debugSource,
     sessionId,
     trace,
     frameIndex,
@@ -45,6 +50,7 @@ function App() {
     status,
     panicMsg,
     isRunning,
+    selectedTestIndex,
     setProblems,
     setCurrentProblem,
     setCustomMode,
@@ -57,24 +63,51 @@ function App() {
     setStatus,
     setPanicMsg,
     setIsRunning,
+    setCustomTests,
+    setTestResults,
+    setHighlightedVar,
+    resetTrace,
     currentFrame,
+    prevFrame,
+    activeTests,
   } = useDebuggerStore();
 
-  const { settings, loadSettings, toast, setToast } = useSettingsStore();
+  const { settings, loadSettings, saveSettings, toast, setToast } = useSettingsStore();
   const tr = t(currentLang(settings));
 
   const [rightTab, setRightTab] = useState<RightTab>('vars');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [varsHeight, setVarsHeight] = useState(220);
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const frameIndexRef = useRef(frameIndex);
+  const traceRef = useRef(trace);
   const sessionIdRef = useRef(sessionId);
-  sessionIdRef.current = sessionId;
   const disclaimer = useDisclaimer();
+
+  frameIndexRef.current = frameIndex;
+  traceRef.current = trace;
+  sessionIdRef.current = sessionId;
 
   useEffect(() => {
     loadSettings();
-  }, [loadSettings]);
+    LoadCustomTests()
+      .then((tests) => {
+        if (tests?.length) setCustomTests(tests.map((t) => ({ ...t })));
+      })
+      .catch(console.error);
+  }, [loadSettings, setCustomTests]);
+
+  const stopPlayback = useCallback(() => {
+    if (playRef.current) {
+      clearInterval(playRef.current);
+      playRef.current = null;
+    }
+    setIsPlaying(false);
+  }, []);
 
   const selectProblem = useCallback(
     async (id: string) => {
+      stopPlayback();
       setCustomMode(false);
       const p = await LoadProblem(id);
       setCurrentProblem(p);
@@ -82,10 +115,10 @@ function App() {
       setCompileErrors([]);
       setPanicMsg('');
       setTrace(null);
-      setDebugSource('');
+      setDebugSource('', '', 0);
       setStatus('idle');
     },
-    [setCustomMode, setCurrentProblem, setSource, setCompileErrors, setPanicMsg, setTrace, setStatus],
+    [setCustomMode, setCurrentProblem, setSource, setCompileErrors, setPanicMsg, setTrace, setDebugSource, setStatus, stopPlayback],
   );
 
   useEffect(() => {
@@ -132,13 +165,171 @@ function App() {
     };
   }, [sessionId, setTrace, setFrameIndex, setStatus, setPanicMsg, setCompileErrors, setIsRunning]);
 
+  const startPlayback = useCallback(() => {
+    const trc = traceRef.current;
+    if (!trc?.frames?.length) return;
+    if (playRef.current) clearInterval(playRef.current);
+    setIsPlaying(true);
+    const speed = settings.playbackSpeed || 1;
+    const delay = BASE_PLAY_MS / speed;
+    playRef.current = setInterval(() => {
+      const current = traceRef.current;
+      if (!current?.frames?.length) {
+        stopPlayback();
+        return;
+      }
+      const i = frameIndexRef.current + 1;
+      if (i >= current.frames.length) {
+        stopPlayback();
+        return;
+      }
+      setFrameIndex(i);
+    }, delay);
+  }, [settings.playbackSpeed, setFrameIndex, stopPlayback]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (isPlaying) stopPlayback();
+        else if (trace?.frames?.length) startPlayback();
+      } else if (e.code === 'ArrowLeft' && trace?.frames?.length) {
+        stopPlayback();
+        setFrameIndex(Math.max(0, frameIndexRef.current - 1));
+      } else if (e.code === 'ArrowRight' && trace?.frames?.length) {
+        stopPlayback();
+        setFrameIndex(Math.min(trace.frames.length - 1, frameIndexRef.current + 1));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isPlaying, trace, setFrameIndex, stopPlayback, startPlayback]);
+
+  const resolveRunner = async (): Promise<string> => {
+    const tests = activeTests();
+    const test = tests[selectedTestIndex] ?? tests[0];
+    if (customMode) {
+      if (!test) return '';
+      const runner = await BuildRunnerFromTest('', new models.TestCase(test), source);
+      return runner ?? '';
+    }
+    if (test && currentProblem?.entry) {
+      const runner = await BuildRunnerFromTest(
+        currentProblem.entry,
+        new models.TestCase(test),
+        source,
+      );
+      if (runner) return runner;
+    }
+    return currentProblem?.runner ?? '';
+  };
+
+  const handleCompileRun = async () => {
+    stopPlayback();
+    setCompileErrors([]);
+    setPanicMsg('');
+    setTrace(null);
+    setDebugSource('', '', 0);
+    setIsRunning(true);
+    setStatus('compiling');
+
+    const mode = customMode ? 'auto' : 'function_wrapper';
+    const runner = await resolveRunner();
+    const res = await Compile(source, mode, runner);
+    if (!res.success) {
+      setCompileErrors(res.errors ?? []);
+      setStatus('compile error');
+      setIsRunning(false);
+      return;
+    }
+
+    if (res.debugSource?.trim()) {
+      setDebugSource(res.debugSource, res.debugFile ?? '', res.editorLineOffset ?? 0);
+    }
+
+    const sid = res.sessionId;
+    if (!sid) {
+      setPanicMsg('Compile succeeded but session id is missing');
+      setIsRunning(false);
+      setStatus('error');
+      return;
+    }
+    setSessionId(sid);
+    setStatus('debugging');
+    try {
+      await RunDebug(sid, { maxSteps: 400 });
+      setTimeout(async () => {
+        try {
+          const trc = await GetTrace(sid);
+          if (trc.frames?.length) {
+            setTrace(trc);
+            setFrameIndex(trc.frames.length - 1);
+          }
+          if (trc.status === 'finished' || trc.status === 'panic' || trc.status === 'error') {
+            setStatus(trc.status);
+            setIsRunning(false);
+          } else if (trc.frames?.length && trc.status === 'paused') {
+            setStatus('finished');
+            setIsRunning(false);
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 2000);
+    } catch (e) {
+      setPanicMsg(String(e));
+      setIsRunning(false);
+      setStatus('error');
+    }
+  };
+
+  const handleStop = () => {
+    stopPlayback();
+    if (sessionId) Stop(sessionId);
+    setIsRunning(false);
+    setStatus('stopped');
+  };
+
+  const handleStep = async (cmd: string) => {
+    stopPlayback();
+    if (!sessionId) return;
+    const res = await Step(sessionId, cmd);
+    if (res.trace) setTrace(res.trace);
+    if (res.trace?.frames?.length) setFrameIndex(res.trace.frames.length - 1);
+    if (res.finished) {
+      setIsRunning(false);
+      setStatus('finished');
+    }
+    if (res.error) setPanicMsg(res.error);
+  };
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    stopPlayback();
+    startPlayback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.playbackSpeed, isPlaying]);
+
+  const handleTimelineChange = (index: number) => {
+    stopPlayback();
+    setFrameIndex(index);
+  };
+
+  const handleSpeedChange = async (speed: number) => {
+    const next = { ...settings, playbackSpeed: speed };
+    await saveSettings(next);
+  };
+
   const handleCustom = async () => {
+    stopPlayback();
     setCustomMode(true);
     setCurrentProblem(null);
     setCompileErrors([]);
     setPanicMsg('');
     setTrace(null);
-    setDebugSource('');
+    setDebugSource('', '', 0);
     setStatus('idle');
     try {
       const saved = await LoadCustomCode('');
@@ -173,103 +364,10 @@ function App() {
     }
   };
 
-  const handleCompileRun = async () => {
-    setCompileErrors([]);
-    setPanicMsg('');
-    setTrace(null);
-    setDebugSource('');
-    setIsRunning(true);
-    setStatus('compiling');
-
-    const mode = customMode ? 'auto' : 'function_wrapper';
-    const runner = customMode ? '' : currentProblem?.runner ?? '';
-    const res = await Compile(source, mode, runner);
-    if (!res.success) {
-      setCompileErrors(res.errors ?? []);
-      setStatus('compile error');
-      setIsRunning(false);
-      return;
-    }
-
-    if (res.debugSource?.trim()) {
-      setDebugSource(res.debugSource, res.debugFile ?? '');
-    }
-
-    const sid = res.sessionId;
-    if (!sid) {
-      setPanicMsg('Compile succeeded but session id is missing');
-      setIsRunning(false);
-      setStatus('error');
-      return;
-    }
-    setSessionId(sid);
-    setStatus('debugging');
-    try {
-      await RunDebug(sid, { maxSteps: 400 });
-      // Fallback: poll trace in case events were missed
-      setTimeout(async () => {
-        try {
-          const trc = await GetTrace(sid);
-          if (trc.frames?.length) {
-            setTrace(trc);
-            setFrameIndex(trc.frames.length - 1);
-          }
-          if (trc.status === 'finished' || trc.status === 'panic' || trc.status === 'error') {
-            setStatus(trc.status);
-            setIsRunning(false);
-          } else if (trc.frames?.length && trc.status === 'paused') {
-            setStatus('finished');
-            setIsRunning(false);
-          }
-        } catch {
-          /* ignore */
-        }
-      }, 2000);
-    } catch (e) {
-      setPanicMsg(String(e));
-      setIsRunning(false);
-      setStatus('error');
-    }
-  };
-
-  const handleStop = () => {
-    if (sessionId) Stop(sessionId);
-    if (playRef.current) clearInterval(playRef.current);
-    setIsRunning(false);
-    setStatus('stopped');
-  };
-
-  const handleStep = async (cmd: string) => {
-    if (!sessionId) return;
-    const res = await Step(sessionId, cmd);
-    if (res.trace) setTrace(res.trace);
-    if (res.trace?.frames?.length) setFrameIndex(res.trace.frames.length - 1);
-    if (res.finished) {
-      setIsRunning(false);
-      setStatus('finished');
-    }
-    if (res.error) setPanicMsg(res.error);
-  };
-
-  const handlePlay = () => {
-    if (!trace?.frames?.length) return;
-    if (playRef.current) clearInterval(playRef.current);
-    let i = frameIndex;
-    playRef.current = setInterval(() => {
-      i += 1;
-      if (i >= trace.frames.length) {
-        if (playRef.current) clearInterval(playRef.current);
-        return;
-      }
-      setFrameIndex(i);
-    }, 500);
-  };
-
   const frame = currentFrame();
-  const editorSource = trace && debugSource ? debugSource : source;
-  const highlightLine = frame?.line ?? 0;
-  const canStep =
-    !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
+  const prev = prevFrame();
+  const highlightLine = frame?.editorLine ?? frame?.line ?? 0;
+  const canStep = !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
   const canPlay = (trace?.frames?.length ?? 0) > 0;
 
   return (
@@ -300,25 +398,38 @@ function App() {
             onStop={handleStop}
             onStep={handleStep}
             canPlay={canPlay}
-            onPlay={handlePlay}
+            onPlay={startPlayback}
+            onPause={stopPlayback}
+            isPlaying={isPlaying}
+            playbackSpeed={settings.playbackSpeed || 1}
+            onSpeedChange={handleSpeedChange}
             onSaveCustom={handleSaveCustom}
             onLoadCustom={handleLoadCustom}
           />
           <div className="min-h-0 flex-1 p-3">
             <CodeEditor
-              source={editorSource}
+              source={source}
               onChange={setSource}
               highlightLine={highlightLine}
+              scrollKey={frameIndex}
               readOnly={!!trace}
               errors={compileErrors}
+              onEditAgain={() => {
+                stopPlayback();
+                resetTrace();
+              }}
+              editAgainLabel={tr.editAgain}
             />
           </div>
-          {currentProblem && <TestPanel tests={currentProblem.tests} />}
+          <TestPanel onRunSelected={handleCompileRun} onRunAll={(results: TestResult[]) => setTestResults(results)} />
           <ErrorPanel message={panicMsg} />
           <Timeline
             frameIndex={frameIndex}
             total={trace?.frames?.length ?? 0}
-            onChange={setFrameIndex}
+            onChange={handleTimelineChange}
+            functionName={frame?.function}
+            line={frame?.line}
+            editorLine={frame?.editorLine}
           />
         </main>
 
@@ -331,31 +442,37 @@ function App() {
               {tr.callStack}
             </TabButton>
           </div>
-          <div className="h-36 overflow-hidden border-b border-border">
-            {rightTab === 'vars' ? (
-              <VariablesTree variables={frame?.variables ?? []} />
-            ) : (
-              <CallStack stack={frame?.stack ?? []} />
-            )}
-          </div>
-          <div className="min-h-0 flex-1">
-            <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase text-muted">
-              {tr.visualization}
-            </div>
-            {(frame?.viz?.length ?? 0) > 0 ? (
-              <Suspense fallback={<div className="p-4 text-xs text-muted">…</div>}>
-                <VizPanel models={frame?.viz ?? []} />
-              </Suspense>
-            ) : (
-              <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
-                {trace?.frames?.length
-                  ? hasSliceLikeVariables(frame?.variables ?? [])
-                    ? tr.vizUnrecognized
-                    : tr.vizEmpty
-                  : tr.vizEmpty}
-              </div>
-            )}
-          </div>
+          <ResizableRightPanel
+            varsHeight={varsHeight}
+            onResize={setVarsHeight}
+            label={tr.visualization}
+            varsPanel={
+              rightTab === 'vars' ? (
+                <VariablesTree
+                  variables={frame?.variables ?? []}
+                  prevVariables={prev?.variables ?? []}
+                  onSelectVar={setHighlightedVar}
+                />
+              ) : (
+                <CallStack stack={frame?.stack ?? []} />
+              )
+            }
+            vizPanel={
+              (frame?.viz?.length ?? 0) > 0 ? (
+                <Suspense fallback={<div className="p-4 text-xs text-muted">…</div>}>
+                  <VizPanel models={frame?.viz ?? []} />
+                </Suspense>
+              ) : (
+                <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
+                  {trace?.frames?.length
+                    ? hasSliceLikeVariables(frame?.variables ?? [])
+                      ? tr.vizUnrecognized
+                      : tr.vizEmpty
+                    : tr.vizEmpty}
+                </div>
+              )
+            }
+          />
         </aside>
       </div>
     </div>

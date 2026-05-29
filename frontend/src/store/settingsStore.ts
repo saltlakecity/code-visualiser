@@ -22,6 +22,7 @@ const defaults = new models.AppSettings({
   theme: 'dark',
   accentColor: '#ffa116',
   customCodeDir: '',
+  playbackSpeed: 1,
 });
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -39,6 +40,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
           accentColor: s.accentColor || '#ffa116',
           customCodeDir: s.customCodeDir || '',
           dataDir: s.dataDir || '',
+          playbackSpeed: s.playbackSpeed || 1,
         }),
         loaded: true,
       });

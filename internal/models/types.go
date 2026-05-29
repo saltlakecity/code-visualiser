@@ -20,8 +20,21 @@ type Problem struct {
 
 // TestCase is input/expected pair.
 type TestCase struct {
+	Name     string `json:"name,omitempty"`
 	Input    string `json:"input"`
+	Args     string `json:"args,omitempty"`
+	Setup    string `json:"setup,omitempty"`
 	Expected string `json:"expected"`
+	Hidden   bool   `json:"hidden,omitempty"`
+}
+
+// TestResult is the outcome of running one test.
+type TestResult struct {
+	Index    int    `json:"index"`
+	Passed   bool   `json:"passed"`
+	Actual   string `json:"actual,omitempty"`
+	Expected string `json:"expected"`
+	Error    string `json:"error,omitempty"`
 }
 
 // CompileResult from go build.
@@ -92,21 +105,38 @@ type VizPointer struct {
 
 // VizModel is visualization data for the UI.
 type VizModel struct {
-	Type      string       `json:"type"` // array, linked_list, tree, map
-	Name      string       `json:"name"`
-	Values    []string     `json:"values,omitempty"`
-	Highlight []int        `json:"highlight,omitempty"`
-	Pointers  []VizPointer `json:"pointers,omitempty"`
-	Nodes     []VizNode    `json:"nodes,omitempty"`
-	Edges     []VizEdge    `json:"edges,omitempty"`
+	Type            string       `json:"type"` // array, matrix, linked_list, tree, map
+	Name            string       `json:"name"`
+	Values          []string     `json:"values,omitempty"`
+	Rows            [][]string   `json:"rows,omitempty"`
+	Highlight       []int        `json:"highlight,omitempty"`
+	HighlightNode   string       `json:"highlightNode,omitempty"`
+	RangeHighlight  *VizRange    `json:"rangeHighlight,omitempty"`
+	Pointers        []VizPointer `json:"pointers,omitempty"`
+	Nodes           []VizNode    `json:"nodes,omitempty"`
+	Edges           []VizEdge    `json:"edges,omitempty"`
+	Entries         []VizEntry   `json:"entries,omitempty"`
+}
+
+// VizRange highlights an inclusive index range in an array.
+type VizRange struct {
+	From int `json:"from"`
+	To   int `json:"to"`
+}
+
+// VizEntry is a map key-value pair for table display.
+type VizEntry struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // VizNode for graph visualizations.
 type VizNode struct {
-	ID    string `json:"id"`
-	Label string `json:"label"`
-	X     float64 `json:"x,omitempty"`
-	Y     float64 `json:"y,omitempty"`
+	ID     string  `json:"id"`
+	Label  string  `json:"label"`
+	X      float64 `json:"x,omitempty"`
+	Y      float64 `json:"y,omitempty"`
+	Active bool    `json:"active,omitempty"`
 }
 
 // VizEdge connects viz nodes.

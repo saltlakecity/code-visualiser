@@ -68,6 +68,17 @@ func TestExtractSliceFromValueString(t *testing.T) {
 	}
 }
 
+func TestDetectRange(t *testing.T) {
+	vars := []models.Variable{
+		{Name: "left", Value: "1"},
+		{Name: "right", Value: "5"},
+	}
+	r := DetectRange(vars)
+	if r == nil || r.From != 1 || r.To != 5 {
+		t.Fatalf("unexpected range: %+v", r)
+	}
+}
+
 func TestExtractLinkedListPointer(t *testing.T) {
 	vars := []models.Variable{
 		{

@@ -18,6 +18,7 @@ func toModel(s settings.AppSettings) models.AppSettings {
 		AccentColor:   s.AccentColor,
 		CustomCodeDir: s.CustomCodeDir,
 		DataDir:       s.DataDir,
+		PlaybackSpeed: s.PlaybackSpeed,
 	}
 }
 
@@ -28,6 +29,7 @@ func fromModel(m models.AppSettings) settings.AppSettings {
 		AccentColor:   m.AccentColor,
 		CustomCodeDir: m.CustomCodeDir,
 		DataDir:       m.DataDir,
+		PlaybackSpeed: m.PlaybackSpeed,
 	}
 }
 

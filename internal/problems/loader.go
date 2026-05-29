@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"visualisator/internal/models"
+	"visualisator/internal/testrunner"
 )
 
 //go:embed data/*.json
@@ -59,7 +60,22 @@ func (l *Loader) Get(id string) (models.Problem, error) {
 	if !ok {
 		return models.Problem{}, fmt.Errorf("problem %q not found", id)
 	}
+	NormalizeProblem(&p)
 	return p, nil
+}
+
+// NormalizeProblem fills test metadata.
+func NormalizeProblem(p *models.Problem) {
+	for i := range p.Tests {
+		if p.Tests[i].Args == "" && p.Tests[i].Input != "" {
+			if args, err := testrunner.ResolveArgs(p.Tests[i]); err == nil {
+				p.Tests[i].Args = args
+			}
+		}
+		if p.Tests[i].Name == "" {
+			p.Tests[i].Name = fmt.Sprintf("Case %d", i+1)
+		}
+	}
 }
 
 // BuildMain generates a main.go for problem template execution.

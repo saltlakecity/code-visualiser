@@ -101,7 +101,12 @@ func (a *App) LoadProblem(id string) (models.Problem, error) {
 	if a.problems == nil {
 		return models.Problem{}, fmt.Errorf("problems not loaded")
 	}
-	return a.problems.Get(id)
+	p, err := a.problems.Get(id)
+	if err != nil {
+		return p, err
+	}
+	NormalizeProblemTests(&p)
+	return p, nil
 }
 
 // Compile builds user source. mainRunner is optional main func body for algorithm problems.

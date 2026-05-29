@@ -144,6 +144,28 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 	return result, nil
 }
 
+// CompileAndRun builds and compiles without starting debug session.
+func (m *Manager) CompileAndRun(source string, mode string, mainExtra string) (models.CompileResult, error) {
+	res, err := m.Compile(source, mode, mainExtra)
+	if err != nil {
+		return res, err
+	}
+	return res, nil
+}
+
+// CleanupSession removes a compiled session without debug.
+func (m *Manager) CleanupSession(sessionID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if e, ok := m.sessions[sessionID]; ok {
+		if e.debug != nil {
+			e.debug.Stop()
+		}
+		m.builder.Cleanup(sessionID)
+		delete(m.sessions, sessionID)
+	}
+}
+
 // StartDebug launches delve on a compiled session.
 func (m *Manager) StartDebug(sessionID string, opts models.RunOptions) error {
 	m.mu.Lock()

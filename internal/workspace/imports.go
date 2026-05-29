@@ -114,6 +114,23 @@ func main() {
 	return buf.String(), nil
 }
 
+// FirstFuncName returns the first top-level function name in source (excluding main).
+func FirstFuncName(source string) string {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, "solution.go", source, 0)
+	if err != nil {
+		return "Solution"
+	}
+	for _, decl := range f.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name.Name == "main" || fn.Recv != nil {
+			continue
+		}
+		return fn.Name.Name
+	}
+	return "Solution"
+}
+
 func buildDemoCall(fn *ast.FuncDecl) string {
 	if fn.Type.Params == nil || len(fn.Type.Params.List) == 0 {
 		return fn.Name.Name + "()"

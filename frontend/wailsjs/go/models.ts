@@ -6,6 +6,7 @@ export namespace models {
 	    accentColor: string;
 	    customCodeDir: string;
 	    dataDir: string;
+	    playbackSpeed: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppSettings(source);
@@ -18,6 +19,7 @@ export namespace models {
 	        this.accentColor = source["accentColor"];
 	        this.customCodeDir = source["customCodeDir"];
 	        this.dataDir = source["dataDir"];
+	        this.playbackSpeed = source["playbackSpeed"];
 	    }
 	}
 	export class CompileError {
@@ -83,8 +85,12 @@ export namespace models {
 		}
 	}
 	export class TestCase {
+	    name?: string;
 	    input: string;
+	    args?: string;
+	    setup?: string;
 	    expected: string;
+	    hidden?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new TestCase(source);
@@ -92,8 +98,12 @@ export namespace models {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
 	        this.input = source["input"];
+	        this.args = source["args"];
+	        this.setup = source["setup"];
 	        this.expected = source["expected"];
+	        this.hidden = source["hidden"];
 	    }
 	}
 	export class Problem {
@@ -218,6 +228,20 @@ export namespace models {
 		    return a;
 		}
 	}
+	export class VizEntry {
+	    key: string;
+	    value: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VizEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.key = source["key"];
+	        this.value = source["value"];
+	    }
+	}
 	export class VizEdge {
 	    from: string;
 	    to: string;
@@ -237,6 +261,7 @@ export namespace models {
 	    label: string;
 	    x?: number;
 	    y?: number;
+	    active?: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new VizNode(source);
@@ -248,6 +273,7 @@ export namespace models {
 	        this.label = source["label"];
 	        this.x = source["x"];
 	        this.y = source["y"];
+	        this.active = source["active"];
 	    }
 	}
 	export class VizPointer {
@@ -264,14 +290,32 @@ export namespace models {
 	        this.index = source["index"];
 	    }
 	}
+	export class VizRange {
+	    from: number;
+	    to: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VizRange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.to = source["to"];
+	    }
+	}
 	export class VizModel {
 	    type: string;
 	    name: string;
 	    values?: string[];
+	    rows?: string[][];
 	    highlight?: number[];
+	    highlightNode?: string;
+	    rangeHighlight?: VizRange;
 	    pointers?: VizPointer[];
 	    nodes?: VizNode[];
 	    edges?: VizEdge[];
+	    entries?: VizEntry[];
 	
 	    static createFrom(source: any = {}) {
 	        return new VizModel(source);
@@ -282,10 +326,14 @@ export namespace models {
 	        this.type = source["type"];
 	        this.name = source["name"];
 	        this.values = source["values"];
+	        this.rows = source["rows"];
 	        this.highlight = source["highlight"];
+	        this.highlightNode = source["highlightNode"];
+	        this.rangeHighlight = this.convertValues(source["rangeHighlight"], VizRange);
 	        this.pointers = this.convertValues(source["pointers"], VizPointer);
 	        this.nodes = this.convertValues(source["nodes"], VizNode);
 	        this.edges = this.convertValues(source["edges"], VizEdge);
+	        this.entries = this.convertValues(source["entries"], VizEntry);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -422,6 +470,28 @@ export namespace models {
 		    return a;
 		}
 	}
+	
+	export class TestResult {
+	    index: number;
+	    passed: boolean;
+	    actual?: string;
+	    expected: string;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.index = source["index"];
+	        this.passed = source["passed"];
+	        this.actual = source["actual"];
+	        this.expected = source["expected"];
+	        this.error = source["error"];
+	    }
+	}
+	
 	
 	
 	

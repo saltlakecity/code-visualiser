@@ -8,9 +8,12 @@ import {
   RotateCcw,
   Save,
   FolderOpen,
+  Pause,
 } from 'lucide-react';
 import { t, translateStatus } from '../i18n';
 import { useSettingsStore, currentLang } from '../store/settingsStore';
+
+const SPEEDS = [0.25, 0.5, 1, 2, 4];
 
 interface Props {
   status: string;
@@ -21,7 +24,11 @@ interface Props {
   onStop: () => void;
   onStep: (cmd: string) => void;
   onPlay: () => void;
+  onPause?: () => void;
+  isPlaying?: boolean;
   canPlay?: boolean;
+  playbackSpeed?: number;
+  onSpeedChange?: (speed: number) => void;
   onSaveCustom?: () => void;
   onLoadCustom?: () => void;
 }
@@ -35,7 +42,11 @@ export function DebugToolbar({
   onStop,
   onStep,
   onPlay,
+  onPause,
+  isPlaying = false,
   canPlay = false,
+  playbackSpeed = 1,
+  onSpeedChange,
   onSaveCustom,
   onLoadCustom,
 }: Props) {
@@ -83,7 +94,25 @@ export function DebugToolbar({
       <ToolBtn icon={<ArrowDown className="h-3.5 w-3.5" />} label={tr.stepIn} disabled={!canStep} onClick={() => onStep('step')} />
       <ToolBtn icon={<CornerDownLeft className="h-3.5 w-3.5" />} label={tr.stepOut} disabled={!canStep} onClick={() => onStep('stepOut')} />
       <ToolBtn icon={<SkipForward className="h-3.5 w-3.5" />} label={tr.continue} disabled={!canStep} onClick={() => onStep('continue')} />
-      <ToolBtn icon={<RotateCcw className="h-3.5 w-3.5" />} label={tr.playTrace} disabled={!canPlay} onClick={onPlay} />
+      {isPlaying ? (
+        <ToolBtn icon={<Pause className="h-3.5 w-3.5" />} label={tr.pause} disabled={!canPlay} onClick={() => onPause?.()} />
+      ) : (
+        <ToolBtn icon={<RotateCcw className="h-3.5 w-3.5" />} label={tr.playTrace} disabled={!canPlay} onClick={onPlay} />
+      )}
+      {canPlay && onSpeedChange && (
+        <select
+          value={playbackSpeed}
+          onChange={(e) => onSpeedChange(Number(e.target.value))}
+          className="rounded border border-border bg-bg px-2 py-1.5 text-xs"
+          title={tr.playbackSpeed}
+        >
+          {SPEEDS.map((s) => (
+            <option key={s} value={s}>
+              {s}x
+            </option>
+          ))}
+        </select>
+      )}
       <span className="ml-auto rounded-full bg-bg px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
         {statusLabel}
       </span>

@@ -11,6 +11,7 @@ import (
 var (
 	intRe       = regexp.MustCompile(`^-?\d+$`)
 	sliceElemRe = regexp.MustCompile(`\[(\d+)\]:\s*([^,\]]+)`)
+	ptrVarNames = []string{"curr", "current", "head", "node", "prev", "next", "root"}
 )
 
 // DetectPointers finds index variables and their array indices.
@@ -60,23 +61,57 @@ func DetectHighlights(vars []models.Variable) []int {
 	return highlights
 }
 
-// Extract builds visualization models from variables.
-func Extract(vars []models.Variable, pointers []models.VizPointer) []models.VizModel {
-	highlight := make([]int, 0, len(pointers))
-	seenIdx := make(map[int]bool)
-	for _, p := range pointers {
-		if !seenIdx[p.Index] {
-			seenIdx[p.Index] = true
-			highlight = append(highlight, p.Index)
+// DetectRange returns left/right range for binary search visualization.
+func DetectRange(vars []models.Variable) *models.VizRange {
+	left, right := -1, -1
+	for _, v := range vars {
+		name := strings.ToLower(v.Name)
+		val := strings.TrimSpace(v.Value)
+		if !intRe.MatchString(val) {
+			continue
+		}
+		idx, _ := strconv.Atoi(val)
+		switch name {
+		case "left", "low", "start":
+			left = idx
+		case "right", "high", "end":
+			right = idx
 		}
 	}
+	if left >= 0 && right >= 0 && left <= right {
+		return &models.VizRange{From: left, To: right}
+	}
+	return nil
+}
+
+// DetectActiveNode finds pointer variable address for graph highlight.
+func DetectActiveNode(vars []models.Variable) string {
+	for _, name := range ptrVarNames {
+		for _, v := range vars {
+			if strings.EqualFold(v.Name, name) {
+				if strings.Contains(v.Value, "nil") {
+					continue
+				}
+				if strings.HasPrefix(v.Type, "*") || strings.Contains(v.Value, "0x") {
+					return v.Value
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// Extract builds visualization models from variables.
+func Extract(vars []models.Variable, pointers []models.VizPointer) []models.VizModel {
+	globalRange := DetectRange(vars)
+	activeAddr := DetectActiveNode(vars)
 	var out []models.VizModel
 	seen := make(map[string]bool)
 	for _, v := range vars {
 		if seen[v.Name] {
 			continue
 		}
-		if vm := extractOne(v, highlight, pointers); vm != nil {
+		if vm := extractOne(v, pointers, globalRange, activeAddr); vm != nil {
 			seen[v.Name] = true
 			out = append(out, *vm)
 		}
@@ -100,25 +135,44 @@ func unwrapVariable(v models.Variable) models.Variable {
 	return inner
 }
 
-func extractOne(v models.Variable, highlight []int, pointers []models.VizPointer) *models.VizModel {
+func extractOne(v models.Variable, pointers []models.VizPointer, globalRange *models.VizRange, activeAddr string) *models.VizModel {
 	v = unwrapVariable(v)
 	typeLower := strings.ToLower(strings.TrimSpace(v.Type))
 	valLower := strings.ToLower(v.Value)
+
+	if isMatrixType(v) {
+		rows := parseMatrixValues(v)
+		if len(rows) > 0 {
+			filtered := filterPointersForArray(pointers, len(rows)*maxRowLen(rows))
+			hl := pointerIndices(filtered)
+			return &models.VizModel{
+				Type:           "matrix",
+				Name:           v.Name,
+				Rows:           rows,
+				Highlight:      hl,
+				Pointers:       filtered,
+				RangeHighlight: globalRange,
+			}
+		}
+	}
 
 	isSlice := strings.HasPrefix(typeLower, "[]") ||
 		strings.HasPrefix(typeLower, "[") ||
 		strings.Contains(valLower, "len:") ||
 		strings.Contains(typeLower, "slice")
 
-	if isSlice {
+	if isSlice && !isMatrixType(v) {
 		vals := parseSliceValues(v)
 		if len(vals) > 0 {
+			filtered := filterPointersForArray(pointers, len(vals))
+			hl := pointerIndices(filtered)
 			return &models.VizModel{
-				Type:      "array",
-				Name:      v.Name,
-				Values:    vals,
-				Highlight: highlight,
-				Pointers:  pointers,
+				Type:           "array",
+				Name:           v.Name,
+				Values:         vals,
+				Highlight:      hl,
+				Pointers:       filtered,
+				RangeHighlight: globalRange,
 			}
 		}
 	}
@@ -128,14 +182,68 @@ func extractOne(v models.Variable, highlight []int, pointers []models.VizPointer
 	}
 
 	if isLinkedListType(v) {
-		return extractLinkedList(v)
+		return extractLinkedList(v, activeAddr)
 	}
 
 	if isTreeType(v) {
-		return extractTree(v)
+		return extractTree(v, activeAddr)
 	}
 
 	return nil
+}
+
+func maxRowLen(rows [][]string) int {
+	max := 0
+	for _, r := range rows {
+		if len(r) > max {
+			max = len(r)
+		}
+	}
+	return max
+}
+
+func filterPointersForArray(pointers []models.VizPointer, length int) []models.VizPointer {
+	if length <= 0 {
+		return nil
+	}
+	var out []models.VizPointer
+	for _, p := range pointers {
+		if p.Index >= 0 && p.Index < length {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func pointerIndices(pointers []models.VizPointer) []int {
+	seen := make(map[int]bool)
+	var hl []int
+	for _, p := range pointers {
+		if !seen[p.Index] {
+			seen[p.Index] = true
+			hl = append(hl, p.Index)
+		}
+	}
+	return hl
+}
+
+func isMatrixType(v models.Variable) bool {
+	typeLower := strings.ToLower(strings.TrimSpace(v.Type))
+	return strings.HasPrefix(typeLower, "[][]")
+}
+
+func parseMatrixValues(v models.Variable) [][]string {
+	if len(v.Children) == 0 {
+		return nil
+	}
+	var rows [][]string
+	for _, rowVar := range v.Children {
+		vals := parseSliceValues(rowVar)
+		if len(vals) > 0 {
+			rows = append(rows, vals)
+		}
+	}
+	return rows
 }
 
 func parseSliceValues(v models.Variable) []string {
@@ -207,17 +315,23 @@ func formatChildValue(c models.Variable) string {
 }
 
 func extractMap(v models.Variable) *models.VizModel {
-	var nodes []models.VizNode
-	for i, c := range v.Children {
-		nodes = append(nodes, models.VizNode{
-			ID:    strconv.Itoa(i),
-			Label: c.Name + ": " + c.Value,
-		})
+	var entries []models.VizEntry
+	for _, c := range v.Children {
+		key := c.Name
+		val := c.Value
+		if idx := strings.Index(val, ":"); idx >= 0 {
+			parts := strings.SplitN(val, ":", 2)
+			if key == "" || strings.HasPrefix(key, "[") {
+				key = strings.TrimSpace(parts[0])
+			}
+			val = strings.TrimSpace(parts[1])
+		}
+		entries = append(entries, models.VizEntry{Key: key, Value: val})
 	}
-	if len(nodes) == 0 {
+	if len(entries) == 0 {
 		return nil
 	}
-	return &models.VizModel{Type: "map", Name: v.Name, Nodes: nodes}
+	return &models.VizModel{Type: "map", Name: v.Name, Entries: entries}
 }
 
 func isLinkedListType(v models.Variable) bool {
@@ -233,22 +347,33 @@ func isLinkedListType(v models.Variable) bool {
 	return hasVal && hasNext
 }
 
-func extractLinkedList(v models.Variable) *models.VizModel {
+func extractLinkedList(v models.Variable, activeAddr string) *models.VizModel {
 	var nodes []models.VizNode
 	var edges []models.VizEdge
-	walkList(v, &nodes, &edges, 0, 20)
+	addrMap := make(map[string]string)
+	walkList(v, &nodes, &edges, addrMap, 0, 20)
 	if len(nodes) == 0 {
 		return nil
 	}
-	return &models.VizModel{Type: "linked_list", Name: v.Name, Nodes: nodes, Edges: edges}
+	highlightNode := matchActiveNode(addrMap, activeAddr)
+	for i := range nodes {
+		if nodes[i].ID == highlightNode {
+			nodes[i].Active = true
+		}
+	}
+	return &models.VizModel{Type: "linked_list", Name: v.Name, Nodes: nodes, Edges: edges, HighlightNode: highlightNode}
 }
 
-func walkList(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdge, depth, max int) {
+func walkList(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdge, addrMap map[string]string, depth, max int) {
 	if depth >= max {
 		return
 	}
 	id := strconv.Itoa(len(*nodes))
 	label := v.Value
+	addr := extractAddr(v.Value)
+	if addr != "" {
+		addrMap[addr] = id
+	}
 	for _, c := range v.Children {
 		if c.Name == "Val" || c.Name == "Value" {
 			label = c.Value
@@ -265,9 +390,20 @@ func walkList(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdg
 		if len(c.Children) > 0 {
 			nextID := strconv.Itoa(len(*nodes))
 			*edges = append(*edges, models.VizEdge{From: id, To: nextID})
-			walkList(c.Children[0], nodes, edges, depth+1, max)
+			walkList(c.Children[0], nodes, edges, addrMap, depth+1, max)
 		}
 	}
+}
+
+func extractAddr(val string) string {
+	if idx := strings.Index(val, "0x"); idx >= 0 {
+		end := idx + 2
+		for end < len(val) && ((val[end] >= '0' && val[end] <= '9') || (val[end] >= 'a' && val[end] <= 'f') || (val[end] >= 'A' && val[end] <= 'F')) {
+			end++
+		}
+		return val[idx:end]
+	}
+	return ""
 }
 
 func isTreeType(v models.Variable) bool {
@@ -285,21 +421,69 @@ func isTreeType(v models.Variable) bool {
 	return hasVal && hasLeft && hasRight
 }
 
-func extractTree(v models.Variable) *models.VizModel {
+func extractTree(v models.Variable, activeAddr string) *models.VizModel {
 	var nodes []models.VizNode
 	var edges []models.VizEdge
-	layoutTree(v, &nodes, &edges, "0", 0, 0, 4)
+	addrMap := make(map[string]string)
+	width := treeWidth(v, 4)
+	if width < 120 {
+		width = 120
+	}
+	layoutTree(v, &nodes, &edges, addrMap, "0", 0, 0, width, 4)
 	if len(nodes) == 0 {
 		return nil
 	}
-	return &models.VizModel{Type: "tree", Name: v.Name, Nodes: nodes, Edges: edges}
+	highlightNode := matchActiveNode(addrMap, activeAddr)
+	for i := range nodes {
+		if nodes[i].ID == highlightNode {
+			nodes[i].Active = true
+		}
+	}
+	return &models.VizModel{Type: "tree", Name: v.Name, Nodes: nodes, Edges: edges, HighlightNode: highlightNode}
 }
 
-func layoutTree(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdge, id string, depth int, xOffset float64, maxDepth int) {
+func matchActiveNode(addrMap map[string]string, activeAddr string) string {
+	if activeAddr == "" {
+		return ""
+	}
+	for addr, id := range addrMap {
+		if strings.Contains(activeAddr, addr) || addr == activeAddr || strings.Contains(addr, activeAddr) {
+			return id
+		}
+	}
+	return ""
+}
+
+func treeWidth(v models.Variable, maxDepth int) float64 {
+	if maxDepth <= 0 {
+		return 1
+	}
+	w := 1.0
+	for i := range v.Children {
+		c := v.Children[i]
+		if c.Name != "Left" && c.Name != "Right" {
+			continue
+		}
+		if strings.Contains(c.Value, "nil") || len(c.Children) == 0 {
+			continue
+		}
+		childW := treeWidth(c.Children[0], maxDepth-1)
+		if childW > w {
+			w = childW
+		}
+	}
+	return w * 2
+}
+
+func layoutTree(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdge, addrMap map[string]string, id string, depth int, xOffset float64, span float64, maxDepth int) {
 	if depth >= maxDepth {
 		return
 	}
 	label := v.Value
+	addr := extractAddr(v.Value)
+	if addr != "" {
+		addrMap[addr] = id
+	}
 	var left, right *models.Variable
 	for i := range v.Children {
 		c := v.Children[i]
@@ -315,19 +499,15 @@ func layoutTree(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizE
 	x := xOffset
 	y := float64(depth) * 80
 	*nodes = append(*nodes, models.VizNode{ID: id, Label: label, X: x, Y: y})
-	span := 120.0 / float64(depth+1)
-	if left != nil && !strings.Contains(left.Value, "nil") {
+	half := span / 4
+	if left != nil && !strings.Contains(left.Value, "nil") && len(left.Children) > 0 {
 		lid := id + "L"
 		*edges = append(*edges, models.VizEdge{From: id, To: lid})
-		if len(left.Children) > 0 {
-			layoutTree(left.Children[0], nodes, edges, lid, depth+1, x-span, maxDepth)
-		}
+		layoutTree(left.Children[0], nodes, edges, addrMap, lid, depth+1, x-half, half, maxDepth)
 	}
-	if right != nil && !strings.Contains(right.Value, "nil") {
+	if right != nil && !strings.Contains(right.Value, "nil") && len(right.Children) > 0 {
 		rid := id + "R"
 		*edges = append(*edges, models.VizEdge{From: id, To: rid})
-		if len(right.Children) > 0 {
-			layoutTree(right.Children[0], nodes, edges, rid, depth+1, x+span, maxDepth)
-		}
+		layoutTree(right.Children[0], nodes, edges, addrMap, rid, depth+1, x+half, half, maxDepth)
 	}
 }
