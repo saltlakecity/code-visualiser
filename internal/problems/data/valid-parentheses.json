@@ -1,0 +1,9 @@
+{
+  "id": "valid-parentheses",
+  "title": "Valid Parentheses",
+  "tags": ["String", "Stack"],
+  "entry": "isValid",
+  "runner": "import \"fmt\"\n\nfunc main() {\n\tfmt.Println(isValid(\"()[]{}\"))\n}",
+  "template": "func isValid(s string) bool {\n\tstack := []rune{}\n\tpairs := map[rune]rune{')': '(', ']': '[', '}': '{'}\n\tfor _, ch := range s {\n\t\tif ch == '(' || ch == '[' || ch == '{' {\n\t\t\tstack = append(stack, ch)\n\t\t} else {\n\t\t\tif len(stack) == 0 || stack[len(stack)-1] != pairs[ch] {\n\t\t\t\treturn false\n\t\t\t}\n\t\t\tstack = stack[:len(stack)-1]\n\t\t}\n\t}\n\treturn len(stack) == 0\n}",
+  "tests": [{"input": "s=\"()[]{}\"", "expected": "true"}]
+}

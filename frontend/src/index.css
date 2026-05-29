@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-accent: #ffa116;
+  --color-bg: #0f0f13;
+  --color-panel: #16161d;
+  --color-border: #2a2a35;
+  --color-text: #e8e8ef;
+  --color-muted: #8b8b9e;
+  --color-success: #01ff85;
+  --color-error: #ff4747;
+}
+
+[data-theme='light'] {
+  --color-bg: #f0f0f5;
+  --color-panel: #ffffff;
+  --color-border: #d8d8e0;
+  --color-text: #1a1a22;
+  --color-muted: #5c5c6e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.bg-bg {
+  background-color: var(--color-bg) !important;
+}
+.bg-panel {
+  background-color: var(--color-panel) !important;
+}
+.border-border {
+  border-color: var(--color-border) !important;
+}
+.text-muted {
+  color: var(--color-muted) !important;
+}
+.text-accent {
+  color: var(--color-accent) !important;
+}
+.bg-accent {
+  background-color: var(--color-accent) !important;
+}
+.border-accent {
+  border-color: var(--color-accent) !important;
+}
+.text-success {
+  color: var(--color-success) !important;
+}
+.text-error {
+  color: var(--color-error) !important;
+}
+.bg-error\/10 {
+  background-color: color-mix(in srgb, var(--color-error) 10%, transparent) !important;
+}

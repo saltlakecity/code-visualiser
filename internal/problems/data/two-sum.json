@@ -1,0 +1,9 @@
+{
+  "id": "two-sum",
+  "title": "Two Sum",
+  "tags": ["Array", "Hash Table"],
+  "entry": "twoSum",
+  "runner": "import \"fmt\"\n\nfunc main() {\n\tfmt.Println(twoSum([]int{2, 7, 11, 15}, 9))\n}",
+  "template": "func twoSum(nums []int, target int) []int {\n\tm := make(map[int]int)\n\tfor i, n := range nums {\n\t\tif j, ok := m[target-n]; ok {\n\t\t\treturn []int{j, i}\n\t\t}\n\t\tm[n] = i\n\t}\n\treturn nil\n}",
+  "tests": [{"input": "nums=[2,7,11,15], target=9", "expected": "[0,1]"}]
+}

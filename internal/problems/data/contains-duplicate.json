@@ -1,0 +1,9 @@
+{
+  "id": "contains-duplicate",
+  "title": "Contains Duplicate",
+  "tags": ["Array", "Hash Table"],
+  "entry": "containsDuplicate",
+  "runner": "import \"fmt\"\n\nfunc main() {\n\tfmt.Println(containsDuplicate([]int{1, 2, 3, 1}))\n}",
+  "template": "func containsDuplicate(nums []int) bool {\n\tseen := make(map[int]struct{})\n\tfor _, n := range nums {\n\t\tif _, ok := seen[n]; ok {\n\t\t\treturn true\n\t\t}\n\t\tseen[n] = struct{}{}\n\t}\n\treturn false\n}",
+  "tests": [{"input": "nums=[1,2,3,1]", "expected": "true"}]
+}

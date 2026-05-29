@@ -1,0 +1,9 @@
+{
+  "id": "reverse-linked-list",
+  "title": "Reverse Linked List",
+  "tags": ["Linked List"],
+  "entry": "reverseList",
+  "runner": "func main() {\n\thead := &ListNode{Val: 1, Next: &ListNode{Val: 2, Next: &ListNode{Val: 3}}}\n\t_ = reverseList(head)\n}",
+  "template": "type ListNode struct {\n\tVal  int\n\tNext *ListNode\n}\n\nfunc reverseList(head *ListNode) *ListNode {\n\tvar prev *ListNode\n\tcurr := head\n\tfor curr != nil {\n\t\tnext := curr.Next\n\t\tcurr.Next = prev\n\t\tprev = curr\n\t\tcurr = next\n\t}\n\treturn prev\n}",
+  "tests": [{"input": "list=[1,2,3,4,5]", "expected": "[5,4,3,2,1]"}]
+}

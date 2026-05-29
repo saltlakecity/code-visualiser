@@ -1,0 +1,9 @@
+{
+  "id": "climbing-stairs",
+  "title": "Climbing Stairs",
+  "tags": ["DP"],
+  "entry": "climbStairs",
+  "runner": "import \"fmt\"\n\nfunc main() {\n\tfmt.Println(climbStairs(5))\n}",
+  "template": "func climbStairs(n int) int {\n\tif n <= 2 {\n\t\treturn n\n\t}\n\ta, b := 1, 2\n\tfor i := 3; i <= n; i++ {\n\t\ta, b = b, a+b\n\t}\n\treturn b\n}",
+  "tests": [{"input": "n=5", "expected": "8"}]
+}

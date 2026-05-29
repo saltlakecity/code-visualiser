@@ -1,0 +1,9 @@
+{
+  "id": "merge-sorted-array",
+  "title": "Merge Sorted Array",
+  "tags": ["Array", "Two Pointers"],
+  "entry": "merge",
+  "runner": "func main() {\n\tnums1 := []int{1, 2, 3, 0, 0, 0}\n\tmerge(nums1, 3, []int{2, 5, 6}, 3)\n}",
+  "template": "func merge(nums1 []int, m int, nums2 []int, n int) {\n\ti, j, k := m-1, n-1, m+n-1\n\tfor j >= 0 {\n\t\tif i >= 0 && nums1[i] > nums2[j] {\n\t\t\tnums1[k] = nums1[i]\n\t\t\ti--\n\t\t} else {\n\t\t\tnums1[k] = nums2[j]\n\t\t\tj--\n\t\t}\n\t\tk--\n\t}\n}",
+  "tests": [{"input": "nums1=[1,2,3,0,0,0], m=3, nums2=[2,5,6], n=3", "expected": "[1,2,2,3,5,6]"}]
+}

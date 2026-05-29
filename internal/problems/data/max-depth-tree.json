@@ -1,0 +1,9 @@
+{
+  "id": "max-depth-tree",
+  "title": "Maximum Depth of Binary Tree",
+  "tags": ["Tree", "DFS"],
+  "entry": "maxDepth",
+  "runner": "func main() {\n\troot := &TreeNode{Val: 3, Left: &TreeNode{Val: 9}, Right: &TreeNode{Val: 20, Right: &TreeNode{Val: 7}}}\n\t_ = maxDepth(root)\n}",
+  "template": "type TreeNode struct {\n\tVal   int\n\tLeft  *TreeNode\n\tRight *TreeNode\n}\n\nfunc maxDepth(root *TreeNode) int {\n\tif root == nil {\n\t\treturn 0\n\t}\n\tleft := maxDepth(root.Left)\n\tright := maxDepth(root.Right)\n\tif left > right {\n\t\treturn left + 1\n\t}\n\treturn right + 1\n}",
+  "tests": [{"input": "tree=[3,9,20,null,null,15,7]", "expected": "3"}]
+}
