@@ -11,5 +11,12 @@
   "author": {
     "name": "saltlakecity",
     "email": "pazhilaya.chichimra@mail.ru"
+  },
+  "info": {
+    "companyName": "saltlakecity",
+    "productName": "Go Code Visualizer",
+    "productVersion": "1.0.0",
+    "copyright": "Copyright © 2026 saltlakecity",
+    "comments": "Step-through Go code visualization (Wails + Delve)"
   }
 }

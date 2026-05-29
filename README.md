@@ -1,62 +1,65 @@
-# Go Code Visualizer (visualisator)
+<p align="center">
+  <img src="logo.png" alt="Go Code Visualizer" width="160">
+</p>
 
-Desktop app for step-through Go code visualization (Wails + Delve + React).
+<h1 align="center">Go Code Visualizer</h1>
 
-## Requirements
+<p align="center">
+  Пошаговая визуализация Go-кода · Wails · Delve · React
+</p>
 
-- Go 1.22+
-- [Node.js](https://nodejs.org/) 18+
-- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
-- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (usually preinstalled on Windows 11)
-- `go`, `dlv` on `PATH` for compile/debug
+<p align="center">
+  <a href="https://github.com/saltlakecity/code-visualiser/releases">Скачать релиз</a>
+  ·
+  <a href="#build-from-source">Сборка из исходников</a>
+</p>
 
-## Build and run (Windows)
+---
 
-**Always use Wails** — do not use plain `go build` for the desktop app.
+Desktop-приложение для пошагового разбора Go-кода: отладка через Delve, переменные, timeline и визуализация структур данных.
 
-```powershell
-cd c:\work\visualisator
-wails build
-.\build\bin\visualisator.exe
+## Download
+
+Готовые сборки публикуются на **[GitHub Releases](https://github.com/saltlakecity/code-visualiser/releases)**.
+
+| Файл | Назначение |
+|------|------------|
+| `visualisator-amd64-installer.exe` | Установщик Windows (рекомендуется) |
+| `visualisator.exe` | Portable-версия без установки |
+| `visualisator-portable.zip` | Архив с portable exe |
+
+## Install (Windows)
+
+### Требования
+
+- **Windows 10** или новее (64-bit)
+- **[Go 1.22+](https://go.dev/dl/)** — `go` должен быть в `PATH` (нужен для компиляции пользовательского кода)
+- **WebView2 Runtime** — установщик ставит его автоматически, если ещё нет
+
+> Delve встроен в приложение. Отдельный `dlv` на PATH не требуется.
+
+### Установка
+
+1. Скачайте `visualisator-amd64-installer.exe` из [Releases](https://github.com/saltlakecity/code-visualiser/releases).
+2. Запустите установщик и следуйте мастеру.
+3. Запустите **Go Code Visualizer** из меню Пуск или с рабочего стола.
+
+### Данные после установки
+
+При установке в `Program Files` приложение сохраняет данные в:
+
+```
+%AppData%\visualisator\
+  settings.json
+  custom\
+  sessions\
+  webview2\
+  app.log
 ```
 
-The release binary is a **GUI app** (`-H windowsgui` in `wails.json`). You should **not** see a console window flash. If you do, rebuild with `wails build` (not `go run` / not `go build`).
+## Portable mode
 
-### Dev mode (hot reload)
-
-```powershell
-wails dev
-```
-
-## Troubleshooting startup
-
-Log file: `data\app.log` next to `visualisator.exe` (created on first run).
-
-**Healthy startup:**
-
-```
-main: start exe=...
-lifecycle: dom ready
-main: exit ok
-```
-
-(`main: exit ok` appears only after you close the window.)
-
-If the log shows `dom ready` but there is no window:
-
-1. Check the taskbar / **Alt+Tab** for «Go Code Visualizer».
-2. Delete WebView cache: `Remove-Item -Recurse -Force .\data\webview2`
-3. Rebuild: `wails build`
-4. Do **not** use `wails build -windowsconsole` unless you need a console for debugging.
-
-Debug build (DevTools + console):
-
-```powershell
-wails build -debug
-.\build\bin\visualisator.exe
-```
-
-## Portable data
+Скачайте `visualisator.exe` или распакуйте `visualisator-portable.zip` в любую папку и запустите. Данные создаются рядом с exe:
 
 ```
 visualisator.exe
@@ -69,18 +72,96 @@ data/
 
 ## Usage
 
-1. Pick a problem or **Custom Code**
-2. **Run** — compile + debug trace
-3. Step / timeline / variables / visualization (graphs load when trace has structures)
+1. Выберите задачу или **Custom Code**
+2. Нажмите **Run** — компиляция и debug trace
+3. Шагайте по коду: timeline, переменные, call stack, визуализация (графы, массивы, стек)
 
-Code editor is a lightweight text area (Monaco removed to keep WebView2 stable in production builds).
+Редактор кода — Monaco с подсветкой Go.
 
-## Windows installer
+## Build from source
+
+### Requirements
+
+- Go 1.22+
+- [Node.js](https://nodejs.org/) 18+
+- [Wails CLI v2](https://wails.io/docs/gettingstarted/installation): `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- [NSIS](https://nsis.sourceforge.io/Download) — только для сборки установщика (`winget install NSIS.NSIS`)
+- [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/) (обычно уже есть в Windows 11)
+
+### Dev mode (hot reload)
+
+Из корня репозитория:
 
 ```powershell
-wails build -nsis
+wails dev
+```
+
+### Production build + installer
+
+```powershell
+.\scripts\build-installer.ps1
+```
+
+Артефакты:
+
+- `build\bin\visualisator.exe` — portable GUI-приложение
+- `build\bin\visualisator-amd64-installer.exe` — NSIS-установщик
+
+**Важно:** для desktop-сборки используйте Wails, а не `go build`. Release-бинарник — GUI-приложение (`-H windowsgui` в `wails.json`), консольное окно не должно мелькать.
+
+Ручная сборка без скрипта:
+
+```powershell
+wails build -clean -nsis -trimpath
+```
+
+### Publish a release
+
+1. Обновите `productVersion` в [`wails.json`](wails.json).
+2. Создайте и запушьте тег (версия должна совпадать):
+
+```powershell
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions соберёт установщик и опубликует [Release](https://github.com/saltlakecity/code-visualiser/releases).
+
+## Troubleshooting
+
+### Log file
+
+- **Portable:** `data\app.log` рядом с exe
+- **Installed:** `%AppData%\visualisator\app.log`
+
+### Healthy startup
+
+```
+main: start exe=...
+lifecycle: dom ready
+main: exit ok
+```
+
+(`main: exit ok` появляется только после закрытия окна.)
+
+### Window not visible
+
+Если в логе есть `dom ready`, но окна не видно:
+
+1. Проверьте панель задач / **Alt+Tab** — «Go Code Visualizer».
+2. Очистите кэш WebView2 (путь зависит от режима):
+   - portable: `Remove-Item -Recurse -Force .\data\webview2`
+   - installed: `Remove-Item -Recurse -Force "$env:APPDATA\visualisator\webview2"`
+3. Пересоберите: `wails build` или `.\scripts\build-installer.ps1`
+4. Не используйте `wails build -windowsconsole`, если не нужна консоль для отладки.
+
+### Debug build (DevTools + console)
+
+```powershell
+wails build -debug
+.\build\bin\visualisator.exe
 ```
 
 ## Application icon
 
-Place `build/appicon.png`, then rebuild. See Wails docs for `wails generate icons`.
+Иконка: [`build/appicon.png`](build/appicon.png). После замены пересоберите приложение. Подробнее: [Wails — generate icons](https://wails.io/docs/guides/application-development/#application-icon).
