@@ -52,19 +52,41 @@ func NewSession(binaryPath, workDir string, timeout time.Duration) (*Session, er
 	}
 	s.recorder.Reset()
 
-	state, err := s.cmd(&api.DebuggerCommand{Name: api.Halt})
+	if err := s.breakAtMain(); err != nil {
+		s.Stop()
+		return nil, err
+	}
+	return s, nil
+}
+
+func (s *Session) breakAtMain() error {
+	// Stop at program entry before main runs
+	_, err := s.dbg.CreateBreakpoint(&api.Breakpoint{}, "main.main", nil, false)
 	if err != nil {
-		// process may already be stopped at entry
-		state, err = s.dbg.State(false)
+		// fallback: break on package main source
+		mainFile := filepath.Join(s.workDir, "main.go")
+		_, err = s.dbg.CreateBreakpoint(&api.Breakpoint{}, mainFile+":1", nil, false)
 		if err != nil {
-			s.Stop()
-			return nil, err
+			// last resort: halt immediately
+			state, herr := s.cmd(&api.DebuggerCommand{Name: api.Halt})
+			if herr != nil {
+				return fmt.Errorf("breakpoint: %w (halt: %v)", err, herr)
+			}
+			if state != nil && !state.Exited && !state.Running {
+				_, _ = s.captureState(state)
+			}
+			return nil
 		}
+	}
+
+	state, err := s.cmd(&api.DebuggerCommand{Name: api.Continue})
+	if err != nil {
+		return fmt.Errorf("continue to main: %w", err)
 	}
 	if state != nil && !state.Exited && !state.Running {
 		_, _ = s.captureState(state)
 	}
-	return s, nil
+	return nil
 }
 
 func (s *Session) cmd(command *api.DebuggerCommand) (*api.DebuggerState, error) {
@@ -106,7 +128,7 @@ func commandName(command string) (string, error) {
 	}
 }
 
-// RunToEnd steps through the program recording trace frames.
+// RunToEnd steps through until the program exits or maxSteps reached.
 func (s *Session) RunToEnd(maxSteps int) (*models.Trace, error) {
 	if maxSteps <= 0 {
 		maxSteps = 500
@@ -120,25 +142,26 @@ func (s *Session) RunToEnd(maxSteps int) (*models.Trace, error) {
 		}
 
 		state, err := s.dbg.State(false)
-		if err != nil {
-			break
-		}
-		if state.Exited {
+		if err != nil || state.Exited {
 			break
 		}
 
-		if !state.Running && state.CurrentThread != nil {
+		if !state.Running {
 			_, _ = s.captureState(state)
 		}
 
-		nextState, err := s.cmd(&api.DebuggerCommand{Name: api.Next})
+		cmdName := api.Next
+		if state.CurrentThread != nil && isUserSource(basename(state.CurrentThread.File)) {
+			cmdName = api.Step // step into calls to see algorithm code
+		}
+		nextState, err := s.cmd(&api.DebuggerCommand{Name: cmdName})
 		if err != nil {
 			break
 		}
-		if nextState == nil {
-			break
-		}
-		if nextState.Exited {
+		if nextState == nil || nextState.Exited {
+			if nextState != nil && !nextState.Running {
+				_, _ = s.captureState(nextState)
+			}
 			break
 		}
 		if !nextState.Running {
@@ -194,11 +217,6 @@ func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, er
 		return nil, nil
 	}
 
-	// Skip runtime frames without source
-	if thread.File == "" && thread.Line == 0 {
-		return nil, nil
-	}
-
 	goid := int64(-1)
 	if state.SelectedGoroutine != nil {
 		goid = state.SelectedGoroutine.ID
@@ -241,16 +259,8 @@ func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, er
 	}
 
 	file := basename(thread.File)
-	if file == "" && len(stack) > 0 {
-		file = stack[0].File
-	}
 	line := thread.Line
-	if line == 0 && len(stack) > 0 {
-		line = stack[0].Line
-	}
-
-	// Prefer recording frames in user source files
-	if !isUserSource(file) && len(stack) > 0 {
+	if (file == "" || line == 0) && len(stack) > 0 {
 		for _, sf := range stack {
 			if isUserSource(sf.File) {
 				file = sf.File
@@ -259,9 +269,14 @@ func (s *Session) captureState(state *api.DebuggerState) (*models.TraceFrame, er
 				break
 			}
 		}
+		if file == "" {
+			file = stack[0].File
+			line = stack[0].Line
+			fn = stack[0].Function
+		}
 	}
 
-	if file == "" || line == 0 {
+	if file == "" {
 		return nil, nil
 	}
 

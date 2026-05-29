@@ -62,6 +62,8 @@ function App() {
 
   const [rightTab, setRightTab] = useState<RightTab>('vars');
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
   const disclaimer = useDisclaimer();
 
   useEffect(() => {
@@ -96,8 +98,9 @@ function App() {
 
   useEffect(() => {
     const offFrame = EventsOn('debug:frame', () => {
-      if (!sessionId) return;
-      GetTrace(sessionId).then((trc) => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      GetTrace(sid).then((trc) => {
         setTrace(trc);
         if (trc.frames?.length) setFrameIndex(trc.frames.length - 1);
       });
@@ -111,11 +114,17 @@ function App() {
     });
     const offPanic = EventsOn('debug:panic', (msg: string) => setPanicMsg(msg));
     const offCompile = EventsOn('compile:error', (errs: unknown) => setCompileErrors(errs as never));
+    const offDebugErr = EventsOn('debug:error', (msg: string) => {
+      setPanicMsg(msg);
+      setIsRunning(false);
+      setStatus('error');
+    });
     return () => {
       offFrame();
       offFinished();
       offPanic();
       offCompile();
+      offDebugErr();
     };
   }, [sessionId, setTrace, setFrameIndex, setStatus, setPanicMsg, setCompileErrors, setIsRunning]);
 
@@ -176,9 +185,41 @@ function App() {
       return;
     }
 
-    setSessionId(res.sessionId);
+    const sid = res.sessionId;
+    if (!sid) {
+      setPanicMsg('Compile succeeded but session id is missing');
+      setIsRunning(false);
+      setStatus('error');
+      return;
+    }
+    setSessionId(sid);
     setStatus('debugging');
-    await RunDebug(res.sessionId, { maxSteps: 400 });
+    try {
+      await RunDebug(sid, { maxSteps: 400 });
+      // Fallback: poll trace in case events were missed
+      setTimeout(async () => {
+        try {
+          const trc = await GetTrace(sid);
+          if (trc.frames?.length) {
+            setTrace(trc);
+            setFrameIndex(trc.frames.length - 1);
+          }
+          if (trc.status === 'finished' || trc.status === 'panic' || trc.status === 'error') {
+            setStatus(trc.status);
+            setIsRunning(false);
+          } else if (trc.frames?.length && trc.status === 'paused') {
+            setStatus('finished');
+            setIsRunning(false);
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 2000);
+    } catch (e) {
+      setPanicMsg(String(e));
+      setIsRunning(false);
+      setStatus('error');
+    }
   };
 
   const handleStop = () => {

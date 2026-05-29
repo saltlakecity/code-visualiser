@@ -98,6 +98,12 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 			return models.CompileResult{}, err
 		}
 	}
+	if err := workspace.ProcessDirImportsExec(paths.Dir); err != nil {
+		m.builder.Cleanup(paths.ID)
+		return models.CompileResult{Success: false, Errors: []models.CompileError{{
+			File: "main.go", Line: 1, Column: 1, Message: err.Error(),
+		}}}, nil
+	}
 	result := m.builder.Compile(paths)
 	if !result.Success {
 		m.builder.Cleanup(paths.ID)

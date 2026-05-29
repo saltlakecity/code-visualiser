@@ -31,12 +31,21 @@ func (r *Recorder) Reset() {
 	r.panicMsg = ""
 }
 
-// Append adds a frame if under limit.
+// Append adds a frame if under limit (skips duplicate consecutive positions).
 func (r *Recorder) Append(frame models.TraceFrame) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if len(r.frames) >= maxFrames {
 		return
+	}
+	if n := len(r.frames); n > 0 {
+		last := r.frames[n-1]
+		if last.File == frame.File && last.Line == frame.Line && last.Function == frame.Function {
+			// refresh variables on same line
+			r.frames[n-1] = frame
+			r.frames[n-1].Index = last.Index
+			return
+		}
 	}
 	frame.Index = len(r.frames)
 	r.frames = append(r.frames, frame)

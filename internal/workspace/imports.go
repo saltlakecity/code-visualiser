@@ -4,64 +4,80 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/format"
 	"go/parser"
 	"go/token"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"golang.org/x/tools/imports"
 )
 
-// FormatAndImports runs goimports and gofmt on Go source.
-func FormatAndImports(filename string, source []byte) ([]byte, error) {
-	processed, err := imports.Process(filename, source, &imports.Options{
-		Comments:  true,
-		TabIndent: true,
-		TabWidth:  4,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("imports: %w", err)
-	}
-	formatted, err := format.Source(processed)
-	if err != nil {
-		return processed, nil
-	}
-	return formatted, nil
-}
-
-// PrepareUserSource ensures package, imports, and main for custom/snippets.
+// PrepareUserSource ensures package and optional main stub (imports fixed per-directory later).
 func PrepareUserSource(source string, mode string) (string, string, error) {
 	src := strings.TrimSpace(source)
 	if src == "" {
 		return "", "", fmt.Errorf("empty source")
 	}
 
-	filename := "main.go"
-	if mode == "function_wrapper" {
-		filename = "solution.go"
-	}
-
 	if !strings.Contains(src, "package ") {
 		src = "package main\n\n" + src
 	}
 
-	processed, err := FormatAndImports(filename, []byte(src))
-	if err != nil {
-		// retry after ensuring parseable
-		processed = []byte(src)
-	}
-
-	final := string(processed)
 	mainExtra := ""
-
-	if !HasMainPackage(final) {
-		mainExtra, err = generateStubMain(final)
+	if !HasMainPackage(src) {
+		var err error
+		mainExtra, err = generateStubMain(src)
 		if err != nil {
 			return "", "", err
 		}
 	}
 
-	return final, mainExtra, nil
+	return src, mainExtra, nil
+}
+
+// ProcessDirImports runs goimports on all Go files in a module directory.
+func ProcessDirImports(dir string) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		b, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		out, err := imports.Process(path, b, &imports.Options{
+			Comments:  true,
+			TabIndent: true,
+			TabWidth:  4,
+		})
+		if err != nil {
+			return fmt.Errorf("%s: %w", e.Name(), err)
+		}
+		if err := os.WriteFile(path, out, 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ProcessDirImportsExec uses goimports CLI when available (better for multi-file packages).
+func ProcessDirImportsExec(dir string) error {
+	if _, err := exec.LookPath("goimports"); err == nil {
+		cmd := exec.Command("goimports", "-w", ".")
+		cmd.Dir = dir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("goimports: %s: %w", out, err)
+		}
+		return nil
+	}
+	return ProcessDirImports(dir)
 }
 
 func generateStubMain(source string) (string, error) {
@@ -84,7 +100,8 @@ func generateStubMain(source string) (string, error) {
 		return `package main
 
 func main() {
-}`, nil
+}
+`, nil
 	}
 
 	call := buildDemoCall(target)
@@ -94,11 +111,7 @@ func main() {
 	buf.WriteString("func main() {\n")
 	buf.WriteString("\tfmt.Println(" + call + ")\n")
 	buf.WriteString("}\n")
-	out, err := FormatAndImports("main.go", buf.Bytes())
-	if err != nil {
-		return buf.String(), nil
-	}
-	return string(out), nil
+	return buf.String(), nil
 }
 
 func buildDemoCall(fn *ast.FuncDecl) string {
@@ -107,8 +120,7 @@ func buildDemoCall(fn *ast.FuncDecl) string {
 	}
 	var args []string
 	for _, field := range fn.Type.Params.List {
-		arg := demoValueForType(field.Type)
-		args = append(args, arg)
+		args = append(args, demoValueForType(field.Type))
 	}
 	return fn.Name.Name + "(" + strings.Join(args, ", ") + ")"
 }

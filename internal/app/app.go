@@ -105,6 +105,11 @@ func (a *App) RunDebug(sessionID string, opts models.RunOptions) error {
 	}
 	if err := a.sessions.StartDebug(sessionID, opts); err != nil {
 		runtime.EventsEmit(a.ctx, "debug:error", err.Error())
+		runtime.EventsEmit(a.ctx, "debug:finished", models.Trace{
+			SessionID: sessionID,
+			Status:    "error",
+			PanicMsg:  err.Error(),
+		})
 		return err
 	}
 	go a.pollTrace(sessionID)

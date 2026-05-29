@@ -21,6 +21,7 @@ Inspired by NeetCode-style visualizers: watch variables, call stack, current lin
 
 - Windows 10/11 (primary target)
 - [Go 1.22+](https://go.dev/dl/) — required to compile user code at runtime
+- Optional: `goimports` on PATH (otherwise the app uses bundled `golang.org/x/tools/imports`)
 - [WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) — usually preinstalled on Windows 11
 - [Node.js 18+](https://nodejs.org/) — for frontend development only
 
