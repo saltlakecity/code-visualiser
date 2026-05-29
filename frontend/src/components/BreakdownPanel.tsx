@@ -55,7 +55,7 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
 
   if (!frames.length) {
     return (
-      <div className="flex h-full flex-col overflow-auto p-3 text-xs">
+      <div className="flex flex-col p-3 text-xs">
         <p className="text-muted">{tr.breakdownEmpty}</p>
         {outline && (
           <div className="mt-4 rounded border border-border bg-bg/50 p-3">
@@ -78,8 +78,8 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden text-xs">
-      <div className="shrink-0 overflow-auto border-b border-border p-3">
+    <div className="flex flex-col text-xs">
+      <div className="shrink-0 border-b border-border p-3">
         <div className="mb-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide text-muted">
           <span>
             {tr.breakdownStep} {frameIndex + 1} / {frames.length}
@@ -137,11 +137,11 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
         )}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex flex-col">
         <div className="shrink-0 border-b border-border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
           {tr.breakdownHistory}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        <div className="p-2">
           {frames.map((f, i) => {
             const active = i === frameIndex;
             return (

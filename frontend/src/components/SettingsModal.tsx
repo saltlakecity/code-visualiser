@@ -37,7 +37,7 @@ export function SettingsModal() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-lg border border-border bg-panel p-5 shadow-xl">
+      <div className="max-h-[min(90vh,640px)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-panel p-5 shadow-xl">
         <h2 className="text-lg font-semibold text-accent">{tr.settings.title}</h2>
 
         <label className="mt-4 block text-xs text-muted">{tr.settings.language}</label>

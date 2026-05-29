@@ -24,7 +24,7 @@ export function ProblemSidebar({ problems, selectedId, customMode, onSelect, onC
   );
 
   return (
-    <aside className="flex h-full w-60 flex-col border-r border-border bg-panel">
+    <aside className="flex h-full min-h-0 w-60 flex-col overflow-hidden border-r border-border bg-panel">
       <div className="flex items-start justify-between border-b border-border p-3">
         <div>
           <h1 className="text-sm font-semibold text-accent">{tr.appTitle}</h1>

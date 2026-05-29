@@ -10,7 +10,7 @@ export function CallStack({ stack }: { stack: StackFrame[] }) {
     return <p className="p-3 text-xs text-muted">{tr.callStackEmpty}</p>;
   }
   return (
-    <div className="overflow-y-auto p-2">
+    <div className="p-2">
       {stack.map((f, i) => (
         <div
           key={`${f.function}-${i}`}

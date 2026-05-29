@@ -258,7 +258,8 @@ func (s *Session) captureState(state *api.DebuggerState, editorLineOffset int) (
 		}
 	}
 
-	vars := s.collectVariables(goid)
+	rawVars := s.collectVariables(goid)
+	vars := analyzer.FilterVariables(rawVars)
 
 	fn := ""
 	if thread.Function != nil {
@@ -282,7 +283,7 @@ func (s *Session) captureState(state *api.DebuggerState, editorLineOffset int) (
 			prevVars = last.Variables
 		}
 	}
-	analyzer.EnrichFrame(s.explain, &tf, prevVars)
+	analyzer.EnrichFrame(s.explain, &tf, prevVars, rawVars)
 
 	s.recorder.Append(tf)
 	s.recorder.SetStatus("paused", "")
@@ -298,7 +299,7 @@ func (s *Session) collectVariables(goid int64) []models.Variable {
 
 	add := func(pv []*proc.Variable) {
 		for _, p := range api.ConvertVars(pv) {
-			if p.Name == "" || seen[p.Name] {
+			if p.Name == "" || seen[p.Name] || analyzer.IsServiceVar(p.Name) {
 				continue
 			}
 			seen[p.Name] = true

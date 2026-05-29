@@ -13,6 +13,9 @@ func ComputeVarDeltas(prev, curr []models.Variable) []VarDelta {
 	var out []VarDelta
 
 	for name, cv := range currMap {
+		if IsServiceVar(name) {
+			continue
+		}
 		newVal := displayValue(cv)
 		pv, ok := prevMap[name]
 		if !ok {

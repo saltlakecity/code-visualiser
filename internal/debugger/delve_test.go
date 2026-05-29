@@ -79,20 +79,23 @@ func main() {
 			t.Fatalf("expected multiple frames, got %d", len(trace.Frames))
 		}
 		var inTwoSum bool
-		var hasViz bool
+		var hasMapVar bool
 		for _, f := range trace.Frames {
 			if f.File == "solution.go" && f.Line > 0 {
 				inTwoSum = true
 			}
-			if len(f.Viz) > 0 {
-				hasViz = true
+			for _, v := range f.Variables {
+				if len(v.Type) >= 3 && v.Type[:3] == "map" {
+					hasMapVar = true
+					break
+				}
 			}
 		}
 		if !inTwoSum {
 			t.Fatal("expected frames in solution.go")
 		}
-		if !hasViz {
-			t.Fatal("expected at least one frame with viz models (array/map)")
+		if !hasMapVar {
+			t.Fatal("expected map variable in trace (twoSum uses map)")
 		}
 	case <-time.After(15 * time.Second):
 		s.Stop()

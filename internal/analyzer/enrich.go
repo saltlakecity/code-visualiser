@@ -12,7 +12,8 @@ type ExplainConfig struct {
 }
 
 // EnrichFrame attaches explanation to a trace frame using previous frame variables.
-func EnrichFrame(cfg *ExplainConfig, tf *models.TraceFrame, prevVars []models.Variable) {
+// rawCurr may include service vars (e.g. ~r0) for return-value narration only; it is not shown in Changes.
+func EnrichFrame(cfg *ExplainConfig, tf *models.TraceFrame, prevVars, rawCurr []models.Variable) {
 	if cfg == nil || tf == nil {
 		return
 	}
@@ -20,7 +21,10 @@ func EnrichFrame(cfg *ExplainConfig, tf *models.TraceFrame, prevVars []models.Va
 	if line <= 0 {
 		line = tf.Line
 	}
-	exp := NarrateStep(cfg.Lang, cfg.SourceMap, cfg.Narrate, line, tf.Function, prevVars, tf.Variables, tf.Index)
+	if rawCurr == nil {
+		rawCurr = tf.Variables
+	}
+	exp := NarrateStep(cfg.Lang, cfg.SourceMap, cfg.Narrate, line, tf.Function, prevVars, tf.Variables, rawCurr, tf.Index)
 	if exp == nil {
 		return
 	}
@@ -30,7 +34,7 @@ func EnrichFrame(cfg *ExplainConfig, tf *models.TraceFrame, prevVars []models.Va
 		StmtKind:  exp.StmtKind,
 		Condition: exp.Condition,
 		LoopIter:  exp.LoopIter,
-		Changes:   toModelDeltas(exp.Changes),
+		Changes:   toModelDeltas(FilterVarDeltas(exp.Changes)),
 	}
 }
 

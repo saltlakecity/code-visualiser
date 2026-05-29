@@ -44,7 +44,7 @@ func TestNarrateStep_assignRU(t *testing.T) {
 		t.Fatal(err)
 	}
 	curr := []models.Variable{{Name: "x", Type: "int", Value: "1"}}
-	exp := NarrateStep(LangRU, sm, NewNarrateContext(), 2, "main.f", nil, curr, 1)
+	exp := NarrateStep(LangRU, sm, NewNarrateContext(), 2, "main.f", nil, curr, nil, 1)
 	if exp == nil || !strings.Contains(exp.Summary, "Присваиваем") {
 		t.Fatalf("%+v", exp)
 	}
@@ -56,7 +56,7 @@ func TestNarrateStep_enter(t *testing.T) {
 		{Name: "a", Type: "int", Value: "2"},
 		{Name: "b", Type: "int", Value: "3"},
 	}
-	exp := NarrateStep(LangEN, sm, NewNarrateContext(), 1, "main.add", nil, curr, 0)
+	exp := NarrateStep(LangEN, sm, NewNarrateContext(), 1, "main.add", nil, curr, nil, 0)
 	if !strings.Contains(exp.Summary, "Enter add") {
 		t.Fatalf("%q", exp.Summary)
 	}

@@ -65,8 +65,7 @@ func (r *Recorder) SetStatus(status, panicMsg string) {
 func (r *Recorder) Trace(sessionID string) models.Trace {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	frames := make([]models.TraceFrame, len(r.frames))
-	copy(frames, r.frames)
+	frames := TrimTraceFrames(r.frames)
 	return models.Trace{
 		SessionID: sessionID,
 		Frames:    frames,

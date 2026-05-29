@@ -7,6 +7,11 @@ export interface VarChange {
   newValue: string;
 }
 
+/** Delve/compiler-internal names (e.g. ~r0 = return slot). */
+export function isServiceVar(name: string): boolean {
+  return name.startsWith('~') || name === '(return)';
+}
+
 function flatVars(vars: Variable[], prefix = ''): Map<string, Variable> {
   const m = new Map<string, Variable>();
   for (const v of vars) {
@@ -36,6 +41,7 @@ export function computeVarChanges(prev: Variable[], curr: Variable[]): VarChange
   const out: VarChange[] = [];
 
   for (const [name, cv] of currMap) {
+    if (isServiceVar(name)) continue;
     const pv = prevMap.get(name);
     const newVal = displayValue(cv);
     if (!pv) {

@@ -26,6 +26,7 @@ func NarrateStep(
 	editorLine int,
 	function string,
 	prevVars, currVars []models.Variable,
+	rawCurr []models.Variable,
 	frameIndex int,
 ) *FrameExplanation {
 	if nc != nil {
@@ -34,6 +35,11 @@ func NarrateStep(
 
 	changes := ComputeVarDeltas(prevVars, currVars)
 	lookup := VarLookup(currVars)
+	if rawCurr != nil {
+		for k, v := range VarLookup(rawCurr) {
+			lookup[k] = v
+		}
+	}
 
 	lineText := ""
 	stmt := StatementInfo{Kind: "other"}

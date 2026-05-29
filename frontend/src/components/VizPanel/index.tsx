@@ -30,7 +30,7 @@ export function VizPanel({ models }: { models: VizModel[] }) {
   });
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="p-2">
       {sorted.map((m) => {
         const dimmed = highlightedVar && m.name !== highlightedVar;
         const wrap = (child: React.ReactNode) => (

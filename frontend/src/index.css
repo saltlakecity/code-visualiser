@@ -103,69 +103,66 @@ body,
   border-color: color-mix(in srgb, var(--color-border) 80%, var(--color-accent)) !important;
 }
 
-/* Go syntax highlighting (Prism tokens) */
-.go-editor .token.comment,
-.go-editor .token.prolog,
-.go-editor .token.doctype,
-.go-editor .token.cdata {
-  color: #6a737d;
-}
-.go-editor .token.punctuation {
-  color: #8b8b9e;
-}
-.go-editor .token.property,
-.go-editor .token.tag,
-.go-editor .token.boolean,
-.go-editor .token.number,
-.go-editor .token.constant,
-.go-editor .token.symbol {
-  color: #79c0ff;
-}
-.go-editor .token.selector,
-.go-editor .token.attr-name,
-.go-editor .token.string,
-.go-editor .token.char,
-.go-editor .token.builtin {
-  color: #a5d6ff;
-}
-.go-editor .token.operator,
-.go-editor .token.entity,
-.go-editor .token.url {
-  color: #e8e8ef;
-}
-.go-editor .token.atrule,
-.go-editor .token.attr-value,
-.go-editor .token.keyword {
-  color: #ff7b72;
-}
-.go-editor .token.function,
-.go-editor .token.class-name {
-  color: #d2a8ff;
-}
-.go-editor .token.regex,
-.go-editor .token.important,
-.go-editor .token.variable {
-  color: #ffa657;
+/* Monaco debug line (replay) */
+.monaco-go-editor .monaco-debug-current-line {
+  background: color-mix(in srgb, var(--color-accent) 15%, transparent) !important;
 }
 
-[data-theme='light'] .go-editor .token.comment {
-  color: #6e7781;
-}
-[data-theme='light'] .go-editor .token.keyword {
-  color: #cf222e;
-}
-[data-theme='light'] .go-editor .token.function {
-  color: #8250df;
+.monaco-go-editor .monaco-debug-gutter-bar::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 100%;
+  margin-left: 3px;
+  background: var(--color-accent);
 }
 
-/* Variable highlights during playback */
+.monaco-go-editor .monaco-compile-error-line {
+  background: color-mix(in srgb, var(--color-error) 10%, transparent) !important;
+}
+
+.monaco-go-editor .monaco-compile-error-gutter::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 100%;
+  margin-left: 3px;
+  background: var(--color-error);
+}
+
+/* Prevent global text color from overriding Monaco token spans */
+.monaco-go-editor .monaco-editor .view-lines {
+  color: unset;
+}
+
+/* Current line: accent bar, not inherited red bracket/error guides */
+.monaco-go-editor .monaco-editor .view-overlays .current-line {
+  border: none !important;
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent) !important;
+  box-shadow: inset 3px 0 0 0 var(--color-accent) !important;
+}
+
+.monaco-go-editor .monaco-editor .margin-view-overlays .current-line {
+  border: none !important;
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent) !important;
+}
+
+/* Scrollable panel regions (variables, stack, viz, etc.) */
+.panel-scroll {
+  min-height: 0;
+  flex: 1 1 0%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* Variable highlights during playback (Monaco inline decorations) */
+.monaco-go-editor .go-var-changed,
 .go-var-changed {
   background: color-mix(in srgb, var(--color-accent) 25%, transparent);
   border-radius: 2px;
-  padding: 0 1px;
-  box-decoration-break: clone;
 }
 
+.monaco-go-editor .go-var-active,
 .go-var-active {
   background: color-mix(in srgb, var(--color-success) 30%, transparent);
   outline: 1px solid color-mix(in srgb, var(--color-success) 50%, transparent);
@@ -174,51 +171,26 @@ body,
   box-decoration-break: clone;
 }
 
-/* Tooltips for types / functions in code and variables panel */
+.monaco-go-editor {
+  min-height: 0;
+}
+
+/* Tooltips in variables panel */
 .go-tip {
   position: relative;
   cursor: help;
   border-bottom: 1px dotted color-mix(in srgb, var(--color-muted) 60%, transparent);
 }
 
-.go-tip-func {
-  border-bottom-color: color-mix(in srgb, #d2a8ff 50%, transparent);
-}
-
 .go-tip-type {
   border-bottom-color: color-mix(in srgb, #79c0ff 50%, transparent);
 }
 
-.go-tip:hover::after,
-.go-tip:focus-visible::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 6px);
-  z-index: 100;
+.go-tip-popup {
   min-width: 160px;
-  max-width: 320px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
-  background: var(--color-panel);
-  color: var(--color-text);
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: pre-wrap;
   box-shadow: var(--editor-glow), 0 4px 16px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
 }
 
-[data-ui-style='minimal'] .go-tip:hover::after {
+[data-ui-style='minimal'] .go-tip-popup {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-
-.go-editor pre {
-  margin: 0;
-}
-
-.go-editor {
-  box-shadow: var(--editor-glow);
 }

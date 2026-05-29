@@ -54,22 +54,25 @@ export function ResizableRightPanel({
   }, [onMouseMove, onMouseUp]);
 
   return (
-    <>
-      <div style={{ height: varsHeight }} className="overflow-hidden border-b border-border">
-        {varsPanel}
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div
+        style={{ height: varsHeight }}
+        className="flex min-h-0 shrink-0 flex-col overflow-hidden border-b border-border"
+      >
+        <div className="panel-scroll">{varsPanel}</div>
       </div>
       <div
         onMouseDown={onMouseDown}
-        className="flex h-1.5 cursor-row-resize items-center justify-center border-b border-border bg-bg hover:bg-accent/20"
+        className="flex h-1.5 shrink-0 cursor-row-resize items-center justify-center border-b border-border bg-bg hover:bg-accent/20"
       >
         <div className="h-0.5 w-8 rounded bg-border" />
       </div>
-      <div className="min-h-0 flex-1">
-        <div className="border-b border-border px-3 py-2 text-xs font-semibold uppercase text-muted">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-border px-3 py-2 text-xs font-semibold uppercase text-muted">
           {label}
         </div>
-        {vizPanel}
+        <div className="panel-scroll">{vizPanel}</div>
       </div>
-    </>
+    </div>
   );
 }

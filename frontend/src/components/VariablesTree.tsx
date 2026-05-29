@@ -5,6 +5,7 @@ import { useDebuggerStore } from '../store/debuggerStore';
 import { useSettingsStore, currentLang } from '../store/settingsStore';
 import type { Variable } from '../types';
 import { formatTypeTip, lookupType } from '../utils/goReference';
+import { AdaptiveTooltip } from './AdaptiveTooltip';
 
 interface Props {
   variables: Variable[];
@@ -29,7 +30,7 @@ export function VariablesTree({ variables, prevVariables = [], onSelectVar }: Pr
   }
 
   return (
-    <div className="overflow-y-auto p-2 text-xs">
+    <div className="p-2 text-xs">
       {variables.map((v) => (
         <VarNode
           key={v.name}
@@ -88,13 +89,12 @@ function VarNode({
             <span className="w-3" />
           )}
           <span className="font-semibold text-accent">{v.name}</span>
-          <span
+          <AdaptiveTooltip
+            tip={typeTip}
             className="go-tip go-tip-type cursor-help rounded bg-bg px-1 py-0.5 font-mono text-[10px] text-muted"
-            data-tip={typeTip}
-            onClick={(e) => e.stopPropagation()}
           >
-            {v.type}
-          </span>
+            <span onClick={(e) => e.stopPropagation()}>{v.type}</span>
+          </AdaptiveTooltip>
           {changed && (
             <span className="rounded bg-amber-500/20 px-1 text-[10px] font-semibold text-amber-400">
               Δ

@@ -453,7 +453,7 @@ function App() {
           </div>
         </main>
 
-        <aside className="flex w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-panel">
+        <aside className="flex min-h-0 w-96 shrink-0 flex-col overflow-hidden border-l border-border bg-panel">
           <div className="flex border-b border-border">
             <TabButton active={rightTab === 'vars'} onClick={() => setRightTab('vars')}>
               {tr.variables}
