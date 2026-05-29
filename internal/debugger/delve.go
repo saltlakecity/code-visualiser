@@ -147,7 +147,9 @@ func (s *Session) RunToEnd(maxSteps int, editorLineOffset int) (*models.Trace, e
 
 		state, err := s.dbg.State(false)
 		if err != nil || state.Exited {
-			break
+			s.handleExit(state, editorLineOffset)
+			trace := s.recorder.Trace("")
+			return &trace, nil
 		}
 
 		if !state.Running && state.CurrentThread != nil && shouldRecordFrame(state, state.CurrentThread) {
@@ -161,7 +163,9 @@ func (s *Session) RunToEnd(maxSteps int, editorLineOffset int) (*models.Trace, e
 
 		nextState, err := s.cmd(&api.DebuggerCommand{Name: cmdName})
 		if err != nil || nextState == nil || nextState.Exited {
-			break
+			s.handleExit(nextState, editorLineOffset)
+			trace := s.recorder.Trace("")
+			return &trace, nil
 		}
 		if !nextState.Running && shouldRecordFrame(nextState, nextState.CurrentThread) {
 			_, _ = s.captureState(nextState, editorLineOffset)
@@ -171,6 +175,59 @@ func (s *Session) RunToEnd(maxSteps int, editorLineOffset int) (*models.Trace, e
 	s.recorder.SetStatus("finished", "")
 	trace := s.recorder.Trace("")
 	return &trace, nil
+}
+
+func (s *Session) handleExit(state *api.DebuggerState, editorLineOffset int) {
+	if state == nil {
+		s.recorder.SetStatus("finished", "")
+		return
+	}
+
+	exitStatus, panicMsg, failureKind, failed := classifyExit(state.Err)
+	s.recorder.SetStatus(exitStatus, panicMsg)
+
+	if !failed || panicMsg == "" {
+		return
+	}
+
+	frameCount := s.recorder.Count()
+	if frameCount == 0 {
+		return
+	}
+	lastIdx := frameCount - 1
+	last := s.recorder.FrameAt(lastIdx)
+	editorLine := 0
+	if last != nil {
+		editorLine = last.EditorLine
+		if editorLine <= 0 {
+			editorLine = last.Line - editorLineOffset
+		}
+	}
+
+	lang := analyzer.LangEN
+	var sm *analyzer.SourceMap
+	editorSource := ""
+	if s.explain != nil {
+		sm = s.explain.SourceMap
+		editorSource = s.explain.EditorSource
+		lang = s.explain.Lang
+	}
+
+	explanation := analyzer.ExplainFailure(lang, sm, editorLine, panicMsg)
+	s.recorder.SetFailure(lastIdx, editorLine, explanation, failureKind)
+	s.recorder.MarkFailureFrame(lastIdx, explanation)
+
+	if last != nil && s.explain != nil {
+		tf := *last
+		if tf.Explanation == nil {
+			tf.Explanation = &models.FrameExplanation{}
+		}
+		tf.Explanation.Summary = explanation
+		tf.IsFailure = true
+		tf.FailureReason = explanation
+		s.recorder.Append(tf)
+	}
+	_ = editorSource
 }
 
 func shouldRecordFrame(state *api.DebuggerState, thread *api.Thread) bool {
@@ -197,19 +254,7 @@ func (s *Session) processState(state *api.DebuggerState, editorLineOffset int) (
 	}
 
 	if state.Exited {
-		exitStatus := "finished"
-		panicMsg := ""
-		if state.Err != nil {
-			errStr := state.Err.Error()
-			if strings.Contains(strings.ToLower(errStr), "panic") {
-				exitStatus = "panic"
-				panicMsg = errStr
-			} else {
-				exitStatus = "error"
-				panicMsg = errStr
-			}
-		}
-		s.recorder.SetStatus(exitStatus, panicMsg)
+		s.handleExit(state, editorLineOffset)
 		trace := s.recorder.Trace("")
 		return &models.StepResult{Finished: true, Trace: &trace}, nil
 	}
@@ -275,15 +320,27 @@ func (s *Session) captureState(state *api.DebuggerState, editorLineOffset int) (
 		editorLine = debugLine
 	}
 
-	tf := BuildFrame(file, debugLine, editorLine, fn, vars, stack)
-
 	var prevVars []models.Variable
 	if n := s.recorder.Count(); n > 0 {
 		if last := s.recorder.FrameAt(n - 1); last != nil {
 			prevVars = last.Variables
 		}
 	}
+
+	var vizCfg *VizBuildConfig
+	if s.explain != nil && s.explain.EditorSource != "" {
+		vizCfg = &VizBuildConfig{EditorSource: s.explain.EditorSource}
+	}
+	tf := BuildFrameWithViz(file, debugLine, editorLine, fn, vars, stack, vizCfg)
 	analyzer.EnrichFrame(s.explain, &tf, prevVars, rawVars)
+
+	if vizCfg != nil && tf.Explanation != nil {
+		vizCfg.LoopIter = tf.Explanation.LoopIter
+		vizCfg.Condition = tf.Explanation.Condition
+		if step := buildStepVizModel(vizCfg, editorLine, fn); step != nil {
+			tf.Viz = upsertStepFlow(tf.Viz, *step)
+		}
+	}
 
 	s.recorder.Append(tf)
 	s.recorder.SetStatus("paused", "")

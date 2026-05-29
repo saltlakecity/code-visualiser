@@ -9,6 +9,7 @@ import {
   Save,
   FolderOpen,
   Pause,
+  GitBranch,
 } from 'lucide-react';
 import { t, translateStatus } from '../i18n';
 import { useSettingsStore, currentLang } from '../store/settingsStore';
@@ -31,6 +32,7 @@ interface Props {
   onSpeedChange?: (speed: number) => void;
   onSaveCustom?: () => void;
   onLoadCustom?: () => void;
+  onFlowchart?: () => void;
 }
 
 export function DebugToolbar({
@@ -49,6 +51,7 @@ export function DebugToolbar({
   onSpeedChange,
   onSaveCustom,
   onLoadCustom,
+  onFlowchart,
 }: Props) {
   const { settings } = useSettingsStore();
   const tr = t(currentLang(settings));
@@ -71,6 +74,16 @@ export function DebugToolbar({
         <Square className="h-3.5 w-3.5" />
         {tr.stop}
       </button>
+      {onFlowchart && (
+        <button
+          onClick={onFlowchart}
+          disabled={isRunning}
+          className="flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:bg-bg disabled:opacity-50"
+        >
+          <GitBranch className="h-3.5 w-3.5" />
+          {tr.flowchartButton}
+        </button>
+      )}
       {customMode && (
         <>
           <button

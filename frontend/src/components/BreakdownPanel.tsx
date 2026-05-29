@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { AnalyzeSource } from '../../wailsjs/go/app/App';
 import type { Language } from '../i18n';
 import { t } from '../i18n';
-import type { AnalyzeResult, Trace, TraceFrame } from '../types';
+import type { AnalyzeResult, CompileError, Trace, TraceFrame } from '../types';
 
 interface Props {
   trace: Trace | null;
   frameIndex: number;
   source: string;
   lang: Language;
+  compileErrors?: CompileError[];
   onSelectStep: (index: number) => void;
 }
 
@@ -22,7 +23,7 @@ function stepLabel(frame: TraceFrame, index: number, tr: ReturnType<typeof t>): 
   return `${tr.breakdownStep} ${index + 1} · ${frame.function || '?'} : ${line}`;
 }
 
-export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }: Props) {
+export function BreakdownPanel({ trace, frameIndex, source, lang, compileErrors = [], onSelectStep }: Props) {
   const tr = t(lang);
   const [outline, setOutline] = useState<AnalyzeResult | null>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
@@ -56,6 +57,18 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
   if (!frames.length) {
     return (
       <div className="flex flex-col p-3 text-xs">
+        {compileErrors.length > 0 && (
+          <div className="mb-4 rounded border border-error/40 bg-error/10 p-3">
+            <div className="mb-1 font-semibold text-error">{tr.compileErrorTitle}</div>
+            <ul className="list-inside list-disc text-error/90">
+              {compileErrors.map((e, i) => (
+                <li key={`${e.line}-${i}`}>
+                  {tr.breakdownLine} {e.line}: {e.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <p className="text-muted">{tr.breakdownEmpty}</p>
         {outline && (
           <div className="mt-4 rounded border border-border bg-bg/50 p-3">
@@ -144,6 +157,7 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
         <div className="p-2">
           {frames.map((f, i) => {
             const active = i === frameIndex;
+            const failed = f.isFailure || i === trace?.failureFrameIndex;
             return (
               <button
                 key={f.index ?? i}
@@ -151,9 +165,11 @@ export function BreakdownPanel({ trace, frameIndex, source, lang, onSelectStep }
                 type="button"
                 onClick={() => onSelectStep(i)}
                 className={`mb-1 w-full rounded px-2 py-1.5 text-left transition-colors ${
-                  active
-                    ? 'border border-accent/40 bg-accent/15 text-[var(--color-text)]'
-                    : 'border border-transparent hover:bg-bg/50 text-muted'
+                  failed
+                    ? 'border border-error/50 bg-error/10 text-error'
+                    : active
+                      ? 'border border-accent/40 bg-accent/15 text-[var(--color-text)]'
+                      : 'border border-transparent hover:bg-bg/50 text-muted'
                 }`}
               >
                 <span className="font-mono text-[10px] text-accent">{i + 1}.</span>{' '}

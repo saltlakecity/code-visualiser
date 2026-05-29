@@ -67,3 +67,19 @@ func TestStmtAt_fallback(t *testing.T) {
 		t.Fatal("empty text")
 	}
 }
+
+func TestParseSource_typeString(t *testing.T) {
+	sm, err := ParseSource(`func search(nums []int, target int) int { return -1 }`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(sm.Outline.Params, "*ast.") {
+		t.Fatalf("params contain AST dump: %q", sm.Outline.Params)
+	}
+	if !strings.Contains(sm.Outline.Params, "[]int") {
+		t.Fatalf("params=%q", sm.Outline.Params)
+	}
+	if !strings.Contains(sm.Outline.Returns, "int") {
+		t.Fatalf("returns=%q", sm.Outline.Returns)
+	}
+}

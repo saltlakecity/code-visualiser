@@ -68,3 +68,10 @@ func TestFormatConditionResult(t *testing.T) {
 		t.Fatal(s)
 	}
 }
+
+func TestExplainFailure_index(t *testing.T) {
+	s := ExplainFailure(LangEN, nil, 5, "runtime error: index out of range [3] with length 2")
+	if !strings.Contains(s, "line 5") || !strings.Contains(s, "index out of bounds") {
+		t.Fatal(s)
+	}
+}

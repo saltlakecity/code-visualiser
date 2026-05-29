@@ -71,10 +71,14 @@ type RunOptions struct {
 
 // Trace is recorded execution frames.
 type Trace struct {
-	SessionID string       `json:"sessionId"`
-	Frames    []TraceFrame `json:"frames"`
-	Status    string       `json:"status"` // running, paused, finished, panic, error
-	PanicMsg  string       `json:"panicMsg,omitempty"`
+	SessionID           string       `json:"sessionId"`
+	Frames              []TraceFrame `json:"frames"`
+	Status              string       `json:"status"` // running, paused, finished, panic, error
+	PanicMsg            string       `json:"panicMsg,omitempty"`
+	FailureFrameIndex   int          `json:"failureFrameIndex,omitempty"`
+	FailureEditorLine   int          `json:"failureEditorLine,omitempty"`
+	FailureReason       string       `json:"failureReason,omitempty"`
+	FailureKind         string       `json:"failureKind,omitempty"` // panic, runtime, error
 }
 
 // VarDelta is a variable change between execution steps.
@@ -114,15 +118,17 @@ type OutlinePoint struct {
 
 // TraceFrame is one debugger snapshot.
 type TraceFrame struct {
-	Index       int               `json:"index"`
-	File        string            `json:"file"`
-	Line        int               `json:"line"`
-	EditorLine  int               `json:"editorLine"`
-	Function    string            `json:"function"`
-	Variables   []Variable        `json:"variables"`
-	Stack       []StackFrame      `json:"stack"`
-	Viz         []VizModel        `json:"viz"`
-	Explanation *FrameExplanation `json:"explanation,omitempty"`
+	Index         int               `json:"index"`
+	File          string            `json:"file"`
+	Line          int               `json:"line"`
+	EditorLine    int               `json:"editorLine"`
+	Function      string            `json:"function"`
+	Variables     []Variable        `json:"variables"`
+	Stack         []StackFrame      `json:"stack"`
+	Viz           []VizModel        `json:"viz"`
+	Explanation   *FrameExplanation `json:"explanation,omitempty"`
+	IsFailure     bool              `json:"isFailure,omitempty"`
+	FailureReason string            `json:"failureReason,omitempty"`
 }
 
 // Variable is a debug variable tree node.
@@ -146,19 +152,36 @@ type VizPointer struct {
 	Index int    `json:"index"`
 }
 
+// VizScalar is a single scalar variable for card display.
+type VizScalar struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
 // VizModel is visualization data for the UI.
 type VizModel struct {
-	Type            string       `json:"type"` // array, matrix, linked_list, tree, map
-	Name            string       `json:"name"`
-	Values          []string     `json:"values,omitempty"`
-	Rows            [][]string   `json:"rows,omitempty"`
-	Highlight       []int        `json:"highlight,omitempty"`
-	HighlightNode   string       `json:"highlightNode,omitempty"`
-	RangeHighlight  *VizRange    `json:"rangeHighlight,omitempty"`
-	Pointers        []VizPointer `json:"pointers,omitempty"`
-	Nodes           []VizNode    `json:"nodes,omitempty"`
-	Edges           []VizEdge    `json:"edges,omitempty"`
-	Entries         []VizEntry   `json:"entries,omitempty"`
+	Type           string       `json:"type"` // array, matrix, linked_list, tree, map, string, stack, scalars, step_flow, flowchart
+	Name           string       `json:"name"`
+	Values         []string     `json:"values,omitempty"`
+	Rows           [][]string   `json:"rows,omitempty"`
+	Highlight      []int        `json:"highlight,omitempty"`
+	HighlightNode  string       `json:"highlightNode,omitempty"`
+	RangeHighlight *VizRange    `json:"rangeHighlight,omitempty"`
+	Pointers       []VizPointer `json:"pointers,omitempty"`
+	Nodes          []VizNode    `json:"nodes,omitempty"`
+	Edges          []VizEdge    `json:"edges,omitempty"`
+	Entries        []VizEntry   `json:"entries,omitempty"`
+	Scalars        []VizScalar  `json:"scalars,omitempty"`
+	LoopIter       int          `json:"loopIter,omitempty"`
+}
+
+// FlowchartResult is a static control-flow diagram for a function.
+type FlowchartResult struct {
+	FunctionName string    `json:"functionName"`
+	Summary      string    `json:"summary"`
+	Nodes        []VizNode `json:"nodes"`
+	Edges        []VizEdge `json:"edges"`
 }
 
 // VizRange highlights an inclusive index range in an array.
@@ -177,6 +200,8 @@ type VizEntry struct {
 type VizNode struct {
 	ID     string  `json:"id"`
 	Label  string  `json:"label"`
+	Kind   string  `json:"kind,omitempty"` // start, process, decision, loop, return, end
+	Line   int     `json:"line,omitempty"`
 	X      float64 `json:"x,omitempty"`
 	Y      float64 `json:"y,omitempty"`
 	Active bool    `json:"active,omitempty"`
@@ -184,8 +209,10 @@ type VizNode struct {
 
 // VizEdge connects viz nodes.
 type VizEdge struct {
-	From string `json:"from"`
-	To   string `json:"to"`
+	From     string `json:"from"`
+	To       string `json:"to"`
+	Label    string `json:"label,omitempty"`
+	Animated bool   `json:"animated,omitempty"`
 }
 
 // StepResult returned after a step command.

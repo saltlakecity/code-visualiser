@@ -6,6 +6,10 @@ export function AnalyzeSource(arg1, arg2) {
   return window['go']['app']['App']['AnalyzeSource'](arg1, arg2);
 }
 
+export function BuildFlowchart(arg1, arg2) {
+  return window['go']['app']['App']['BuildFlowchart'](arg1, arg2);
+}
+
 export function BuildRunnerFromTest(arg1, arg2, arg3) {
   return window['go']['app']['App']['BuildRunnerFromTest'](arg1, arg2, arg3);
 }

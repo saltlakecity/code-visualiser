@@ -59,6 +59,29 @@ export interface StackFrame {
   function: string;
 }
 
+export interface VizScalar {
+  name: string;
+  type: string;
+  value: string;
+}
+
+export interface VizNode {
+  id: string;
+  label: string;
+  kind?: string;
+  line?: number;
+  x?: number;
+  y?: number;
+  active?: boolean;
+}
+
+export interface VizEdge {
+  from: string;
+  to: string;
+  label?: string;
+  animated?: boolean;
+}
+
 export interface VizModel {
   type: string;
   name: string;
@@ -68,9 +91,18 @@ export interface VizModel {
   highlightNode?: string;
   rangeHighlight?: { from: number; to: number };
   pointers?: { name: string; index: number }[];
-  nodes?: { id: string; label: string; x?: number; y?: number; active?: boolean }[];
-  edges?: { from: string; to: string }[];
+  nodes?: VizNode[];
+  edges?: VizEdge[];
   entries?: { key: string; value: string }[];
+  scalars?: VizScalar[];
+  loopIter?: number;
+}
+
+export interface FlowchartResult {
+  functionName: string;
+  summary: string;
+  nodes: VizNode[];
+  edges: VizEdge[];
 }
 
 export interface VarDelta {
@@ -119,6 +151,8 @@ export interface TraceFrame {
   stack: StackFrame[];
   viz: VizModel[];
   explanation?: FrameExplanation;
+  isFailure?: boolean;
+  failureReason?: string;
 }
 
 export interface Trace {
@@ -126,6 +160,10 @@ export interface Trace {
   frames: TraceFrame[];
   status: string;
   panicMsg?: string;
+  failureFrameIndex?: number;
+  failureEditorLine?: number;
+  failureReason?: string;
+  failureKind?: string;
 }
 
 export interface StepResult {

@@ -4,6 +4,8 @@ import {models} from '../models';
 
 export function AnalyzeSource(arg1:string,arg2:string):Promise<models.AnalyzeResult>;
 
+export function BuildFlowchart(arg1:string,arg2:string):Promise<models.FlowchartResult>;
+
 export function BuildRunnerFromTest(arg1:string,arg2:models.TestCase,arg3:string):Promise<string>;
 
 export function Compile(arg1:string,arg2:string,arg3:string):Promise<models.CompileResult>;

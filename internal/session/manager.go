@@ -11,6 +11,7 @@ import (
 	"visualisator/internal/analyzer"
 	"visualisator/internal/debugger"
 	"visualisator/internal/models"
+	"visualisator/internal/viz"
 	"visualisator/internal/workspace"
 )
 
@@ -196,9 +197,10 @@ func (m *Manager) StartDebug(sessionID string, opts models.RunOptions) error {
 		lang = analyzer.LangRU
 	}
 	dbg.SetExplainConfig(&analyzer.ExplainConfig{
-		SourceMap: e.sourceMap,
-		Narrate:   analyzer.NewNarrateContext(),
-		Lang:      lang,
+		SourceMap:    e.sourceMap,
+		EditorSource: e.editorSource,
+		Narrate:      analyzer.NewNarrateContext(),
+		Lang:         lang,
 	})
 	dbg.StartTimeout()
 	e.debug = dbg
@@ -263,6 +265,28 @@ func (m *Manager) GetFrame(sessionID string, index int) (*models.TraceFrame, err
 		return nil, fmt.Errorf("frame %d not found", index)
 	}
 	return f, nil
+}
+
+// BuildFlowchart returns a static flowchart for editor source.
+func (m *Manager) BuildFlowchart(source string, lang string) (models.FlowchartResult, error) {
+	sm, err := analyzer.ParseSource(source)
+	if err != nil {
+		return models.FlowchartResult{}, err
+	}
+	result, err := viz.BuildFlowGraph(source)
+	if err != nil {
+		return models.FlowchartResult{}, err
+	}
+	sig := sm.Outline.Name + "(" + sm.Outline.Params + ")"
+	if sm.Outline.Returns != "" {
+		sig += " " + sm.Outline.Returns
+	}
+	if lang == "ru" {
+		result.Summary = fmt.Sprintf("%s — %d узлов", sig, len(result.Nodes))
+	} else {
+		result.Summary = fmt.Sprintf("%s — %d nodes", sig, len(result.Nodes))
+	}
+	return result, nil
 }
 
 // AnalyzeSource returns static outline for editor source (before run).

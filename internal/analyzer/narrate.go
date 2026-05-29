@@ -317,3 +317,68 @@ func OutlineSummary(lang Lang, o FunctionOutline) string {
 	}
 	return s
 }
+
+// ExplainFailure builds a human-readable explanation for a runtime failure.
+func ExplainFailure(lang Lang, sm *SourceMap, editorLine int, panicMsg string) string {
+	msg := strings.TrimSpace(panicMsg)
+	if msg == "" {
+		return ""
+	}
+
+	stmtText := ""
+	stmtKind := ""
+	if sm != nil && editorLine > 0 {
+		if info, ok := sm.StmtAt(editorLine); ok {
+			stmtText = info.Text
+			stmtKind = info.Kind
+		}
+	}
+
+	lower := strings.ToLower(msg)
+	var cause string
+	switch {
+	case strings.Contains(lower, "index out of range"):
+		if lang == LangRU {
+			cause = "обращение к элементу массива/среза за пределами допустимого индекса"
+		} else {
+			cause = "array/slice index out of bounds"
+		}
+	case strings.Contains(lower, "nil pointer"):
+		if lang == LangRU {
+			cause = "разыменование nil-указателя"
+		} else {
+			cause = "nil pointer dereference"
+		}
+	case strings.Contains(lower, "divide by zero"):
+		if lang == LangRU {
+			cause = "деление на ноль"
+		} else {
+			cause = "division by zero"
+		}
+	case strings.Contains(lower, "panic"):
+		if lang == LangRU {
+			cause = "паника во время выполнения"
+		} else {
+			cause = "runtime panic"
+		}
+	default:
+		if lang == LangRU {
+			cause = "ошибка выполнения"
+		} else {
+			cause = "runtime error"
+		}
+	}
+
+	if lang == LangRU {
+		s := fmt.Sprintf("Ошибка на строке %d: %s. %s", editorLine, cause, msg)
+		if stmtText != "" {
+			s += fmt.Sprintf(" Контекст (%s): %s", stmtKind, stmtText)
+		}
+		return s
+	}
+	s := fmt.Sprintf("Error at line %d: %s. %s", editorLine, cause, msg)
+	if stmtText != "" {
+		s += fmt.Sprintf(" Context (%s): %s", stmtKind, stmtText)
+	}
+	return s
+}

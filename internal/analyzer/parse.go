@@ -358,7 +358,7 @@ func formatFieldList(fset *token.FileSet, fl *ast.FieldList) string {
 		for i, n := range f.Names {
 			names[i] = n.Name
 		}
-		t := exprString(fset, f.Type)
+		t := typeString(fset, f.Type)
 		if len(names) == 0 {
 			parts = append(parts, t)
 		} else {
@@ -375,6 +375,47 @@ func exprString(fset *token.FileSet, e ast.Expr) string {
 	var buf bytes.Buffer
 	_ = ast.Fprint(&buf, fset, e, nil)
 	return strings.TrimSpace(buf.String())
+}
+
+// typeString formats a Go type expression for display (not ast debug dump).
+func typeString(fset *token.FileSet, e ast.Expr) string {
+	if e == nil {
+		return ""
+	}
+	switch t := e.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return "*" + typeString(fset, t.X)
+	case *ast.ArrayType:
+		if t.Len != nil {
+			return "[" + exprString(fset, t.Len) + "]" + typeString(fset, t.Elt)
+		}
+		return "[]" + typeString(fset, t.Elt)
+	case *ast.MapType:
+		return "map[" + typeString(fset, t.Key) + "]" + typeString(fset, t.Value)
+	case *ast.SelectorExpr:
+		return typeString(fset, t.X) + "." + t.Sel.Name
+	case *ast.InterfaceType:
+		if t.Methods == nil || len(t.Methods.List) == 0 {
+			return "interface{}"
+		}
+	case *ast.StructType:
+		return "struct{...}"
+	case *ast.ChanType:
+		s := "chan "
+		if t.Dir == ast.SEND {
+			s = "chan<- "
+		} else if t.Dir == ast.RECV {
+			s = "<-chan "
+		}
+		return s + typeString(fset, t.Value)
+	case *ast.FuncType:
+		return "func"
+	case *ast.Ellipsis:
+		return "..." + typeString(fset, t.Elt)
+	}
+	return "T"
 }
 
 func identNames(e ast.Expr) []string {

@@ -126,6 +126,15 @@ func (a *App) AnalyzeSource(source string, lang string) (models.AnalyzeResult, e
 	}, nil
 }
 
+// BuildFlowchart returns a static flowchart for editor source.
+func (a *App) BuildFlowchart(source string, lang string) (models.FlowchartResult, error) {
+	sm, err := a.ensureSessions()
+	if err != nil {
+		return models.FlowchartResult{}, err
+	}
+	return sm.BuildFlowchart(source, lang)
+}
+
 // Compile builds user source. mainRunner is optional main func body for algorithm problems.
 func (a *App) Compile(source string, mode string, mainRunner string) (models.CompileResult, error) {
 	sm, err := a.ensureSessions()

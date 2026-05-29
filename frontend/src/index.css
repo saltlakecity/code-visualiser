@@ -191,6 +191,143 @@ body,
   box-shadow: var(--editor-glow), 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
-[data-ui-style='minimal'] .go-tip-popup {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+.flow-node {
+  max-width: 110px;
+  padding: 6px 10px;
+  font-size: 10px;
+  line-height: 1.3;
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+  word-break: break-word;
+  color: var(--color-text);
+  background: var(--color-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  cursor: grab;
+}
+
+.flow-node:active {
+  cursor: grabbing;
+}
+
+.flow-node-start,
+.flow-node-end {
+  border-radius: 999px;
+  border-color: #4ade80;
+  background: #1a1a24;
+  padding: 6px 16px;
+}
+
+.flow-node-decision {
+  border-color: #fbbf24;
+  transform: rotate(0deg);
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  padding: 12px 14px;
+  min-width: 72px;
+}
+
+.flow-node-loop {
+  border: 2px solid #60a5fa;
+  border-radius: var(--radius-base);
+}
+
+.flow-node-return {
+  border-color: #f87171;
+}
+
+.flow-node-active {
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 12px rgba(255, 161, 22, 0.45);
+  background: rgba(255, 161, 22, 0.15);
+}
+
+.flow-node-label {
+  pointer-events: none;
+}
+
+.flow-legend {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+  padding: 8px 12px;
+}
+
+.flow-legend-title {
+  margin-bottom: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+}
+
+.flow-legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.flow-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 220px;
+}
+
+.flow-legend-swatch {
+  flex-shrink: 0;
+  width: 28px;
+  height: 20px;
+  max-width: 28px;
+  padding: 0;
+  font-size: 0;
+  cursor: default;
+}
+
+.flow-legend-swatch.flow-node-start,
+.flow-legend-swatch.flow-node-end {
+  width: 32px;
+  height: 16px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.flow-legend-swatch.flow-node-decision {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+}
+
+.flow-legend-edge {
+  flex-shrink: 0;
+  display: block;
+  width: 28px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--color-accent);
+  box-shadow: 0 0 6px rgba(255, 161, 22, 0.5);
+}
+
+.flow-legend-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.flow-legend-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.flow-legend-desc {
+  font-size: 9px;
+  color: var(--color-muted);
+  line-height: 1.25;
 }

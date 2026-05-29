@@ -6,9 +6,10 @@ import (
 
 // ExplainConfig holds per-session data for frame narration.
 type ExplainConfig struct {
-	SourceMap *SourceMap
-	Narrate   *NarrateContext
-	Lang      Lang
+	SourceMap    *SourceMap
+	EditorSource string
+	Narrate      *NarrateContext
+	Lang         Lang
 }
 
 // EnrichFrame attaches explanation to a trace frame using previous frame variables.

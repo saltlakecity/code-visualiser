@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EventsOn } from '../wailsjs/runtime/runtime';
 import {
+  BuildFlowchart,
   BuildRunnerFromTest,
   Compile,
   GetTrace,
@@ -23,18 +24,20 @@ import { Timeline } from './components/Timeline';
 import { VariablesTree } from './components/VariablesTree';
 import { CallStack } from './components/CallStack';
 import { ResizableRightPanel } from './components/ResizableRightPanel';
-const VizPanel = lazy(() => import('./components/VizPanel').then((m) => ({ default: m.VizPanel })));
+const VisualizationPanel = lazy(() =>
+  import('./components/VizPanel').then((m) => ({ default: m.VisualizationPanel })),
+);
+import { FlowchartModal } from './components/FlowchartModal';
 import { TestPanel } from './components/TestPanel';
 import { ErrorPanel } from './components/ErrorPanel';
 import { DisclaimerModal, useDisclaimer } from './components/DisclaimerModal';
 import { SettingsModal } from './components/SettingsModal';
 import { t, translateStatus } from './i18n';
 import { currentLang } from './store/settingsStore';
-import type { TestResult, Trace } from './types';
+import type { FlowchartResult, TestResult, Trace } from './types';
 import { VariableChangesBanner } from './components/VariableChangesBanner';
 import { BreakdownPanel, explanationChangedVars } from './components/BreakdownPanel';
 import { computeVarChanges, changedVarNames } from './utils/varChanges';
-import { hasSliceLikeVariables } from './utils/vizHelpers';
 
 type RightTab = 'vars' | 'stack' | 'breakdown';
 
@@ -82,6 +85,10 @@ function App() {
   const [rightTab, setRightTab] = useState<RightTab>('vars');
   const [isPlaying, setIsPlaying] = useState(false);
   const [varsHeight, setVarsHeight] = useState(220);
+  const [flowchartOpen, setFlowchartOpen] = useState(false);
+  const [flowchartData, setFlowchartData] = useState<FlowchartResult | null>(null);
+  const [flowchartLoading, setFlowchartLoading] = useState(false);
+  const [scrollToLine, setScrollToLine] = useState(0);
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const frameIndexRef = useRef(frameIndex);
   const traceRef = useRef(trace);
@@ -149,9 +156,22 @@ function App() {
     const offFinished = EventsOn('debug:finished', (trc: Trace) => {
       setTrace(trc);
       setStatus(trc.status === 'paused' ? 'finished' : trc.status);
-      if (trc.panicMsg) setPanicMsg(trc.panicMsg);
       setIsRunning(false);
-      if (trc.frames?.length) setFrameIndex(trc.frames.length - 1);
+      if (trc.frames?.length) {
+        const failed = trc.status === 'panic' || trc.status === 'error';
+        const idx =
+          failed && trc.failureFrameIndex != null && trc.failureFrameIndex >= 0
+            ? trc.failureFrameIndex
+            : trc.frames.length - 1;
+        setFrameIndex(idx);
+        if (failed && trc.failureEditorLine) setScrollToLine(trc.failureEditorLine);
+      }
+      if (trc.status === 'panic' || trc.status === 'error') {
+        const errMsg = trc.failureReason || trc.panicMsg;
+        if (errMsg) setPanicMsg(errMsg);
+      } else {
+        setPanicMsg('');
+      }
     });
     const offPanic = EventsOn('debug:panic', (msg: string) => setPanicMsg(msg));
     const offCompile = EventsOn('compile:error', (errs: unknown) => setCompileErrors(errs as never));
@@ -381,6 +401,32 @@ function App() {
     if (fromExp.length > 0) return fromExp;
     return changedVarNames(varChanges);
   }, [frame, varChanges]);
+  const handleOpenFlowchart = useCallback(async () => {
+    setFlowchartOpen(true);
+    setFlowchartLoading(true);
+    try {
+      const result = await BuildFlowchart(source, lang);
+      setFlowchartData(result);
+    } catch {
+      setFlowchartData(null);
+    } finally {
+      setFlowchartLoading(false);
+    }
+  }, [source, lang]);
+
+  const handleGoToFailure = useCallback(() => {
+    const idx = trace?.failureFrameIndex;
+    if (idx != null && idx >= 0) {
+      setFrameIndex(idx);
+      if (trace?.failureEditorLine) setScrollToLine(trace.failureEditorLine);
+      setRightTab('breakdown');
+    }
+  }, [trace, setFrameIndex]);
+
+  const handleFlowchartLineClick = useCallback((line: number) => {
+    setScrollToLine(line);
+    setFlowchartOpen(false);
+  }, []);
   const canStep = !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
   const canPlay = (trace?.frames?.length ?? 0) > 0;
 
@@ -388,6 +434,13 @@ function App() {
     <div className="flex h-full flex-col overflow-hidden bg-bg text-sm">
       {disclaimer.open && <DisclaimerModal onAccept={disclaimer.accept} />}
       <SettingsModal />
+      <FlowchartModal
+        open={flowchartOpen}
+        data={flowchartData}
+        loading={flowchartLoading}
+        onClose={() => setFlowchartOpen(false)}
+        onLineClick={handleFlowchartLineClick}
+      />
       {toast && (
         <div className="fixed bottom-4 right-4 z-50 rounded-md bg-accent px-4 py-2 text-xs font-semibold text-black shadow-lg">
           {toast}
@@ -419,13 +472,14 @@ function App() {
             onSpeedChange={handleSpeedChange}
             onSaveCustom={handleSaveCustom}
             onLoadCustom={handleLoadCustom}
+            onFlowchart={handleOpenFlowchart}
           />
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 pb-0">
             <CodeEditor
               source={source}
               onChange={setSource}
-              highlightLine={highlightLine}
-              scrollKey={frameIndex}
+              highlightLine={scrollToLine || highlightLine}
+              scrollKey={scrollToLine || frameIndex}
               readOnly={!!trace}
               errors={compileErrors}
               lang={lang}
@@ -441,7 +495,7 @@ function App() {
           {trace && <VariableChangesBanner changes={varChanges} lang={lang} />}
           <div className="shrink-0 overflow-hidden">
             <TestPanel onRunSelected={handleCompileRun} onRunAll={(results: TestResult[]) => setTestResults(results)} />
-            <ErrorPanel message={panicMsg} />
+            <ErrorPanel message={panicMsg} trace={trace} onGoToFailure={handleGoToFailure} />
             <Timeline
               frameIndex={frameIndex}
               total={trace?.frames?.length ?? 0}
@@ -484,24 +538,15 @@ function App() {
                   frameIndex={frameIndex}
                   source={source}
                   lang={lang}
+                  compileErrors={compileErrors}
                   onSelectStep={handleTimelineChange}
                 />
               )
             }
             vizPanel={
-              (frame?.viz?.length ?? 0) > 0 ? (
-                <Suspense fallback={<div className="p-4 text-xs text-muted">…</div>}>
-                  <VizPanel models={frame?.viz ?? []} />
-                </Suspense>
-              ) : (
-                <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
-                  {trace?.frames?.length
-                    ? hasSliceLikeVariables(frame?.variables ?? [])
-                      ? tr.vizUnrecognized
-                      : tr.vizEmpty
-                    : tr.vizEmpty}
-                </div>
-              )
+              <Suspense fallback={<div className="p-4 text-xs text-muted">…</div>}>
+                <VisualizationPanel models={frame?.viz ?? []} hasTrace={(trace?.frames?.length ?? 0) > 0} />
+              </Suspense>
             }
           />
         </aside>

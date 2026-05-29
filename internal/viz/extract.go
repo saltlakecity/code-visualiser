@@ -115,6 +115,19 @@ func Extract(vars []models.Variable, pointers []models.VizPointer) []models.VizM
 			seen[v.Name] = true
 			out = append(out, *vm)
 		}
+		// Unwrap struct fields that contain list/tree roots
+		for _, child := range v.Children {
+			childName := strings.ToLower(child.Name)
+			if childName == "head" || childName == "root" || childName == "list" {
+				child.Name = v.Name + "." + child.Name
+				if vm := extractOne(child, pointers, globalRange, activeAddr); vm != nil {
+					if !seen[vm.Name] {
+						seen[vm.Name] = true
+						out = append(out, *vm)
+					}
+				}
+			}
+		}
 	}
 	return out
 }
@@ -139,6 +152,13 @@ func extractOne(v models.Variable, pointers []models.VizPointer, globalRange *mo
 	v = unwrapVariable(v)
 	typeLower := strings.ToLower(strings.TrimSpace(v.Type))
 	valLower := strings.ToLower(v.Value)
+	nameLower := strings.ToLower(v.Name)
+
+	if typeLower == "string" || strings.HasPrefix(typeLower, "string") {
+		if vm := extractString(v, pointers); vm != nil {
+			return vm
+		}
+	}
 
 	if isMatrixType(v) {
 		rows := parseMatrixValues(v)
@@ -166,8 +186,12 @@ func extractOne(v models.Variable, pointers []models.VizPointer, globalRange *mo
 		if len(vals) > 0 {
 			filtered := filterPointersForArray(pointers, len(vals))
 			hl := pointerIndices(filtered)
+			vizType := "array"
+			if nameLower == "stack" || strings.Contains(nameLower, "stack") {
+				vizType = "stack"
+			}
 			return &models.VizModel{
-				Type:           "array",
+				Type:           vizType,
 				Name:           v.Name,
 				Values:         vals,
 				Highlight:      hl,
@@ -190,6 +214,44 @@ func extractOne(v models.Variable, pointers []models.VizPointer, globalRange *mo
 	}
 
 	return nil
+}
+
+func extractString(v models.Variable, pointers []models.VizPointer) *models.VizModel {
+	raw := strings.TrimSpace(v.Value)
+	raw = strings.Trim(raw, `"`)
+	if raw == "" && len(v.Children) > 0 {
+		var chars []string
+		for _, c := range v.Children {
+			chars = append(chars, formatChildValue(c))
+		}
+		if len(chars) > 0 {
+			raw = strings.Join(chars, "")
+		}
+	}
+	if raw == "" {
+		return nil
+	}
+	runes := []rune(raw)
+	vals := make([]string, len(runes))
+	for i, r := range runes {
+		if r == ' ' {
+			vals[i] = "␣"
+		} else if r == '\t' {
+			vals[i] = "⇥"
+		} else if r == '\n' {
+			vals[i] = "↵"
+		} else {
+			vals[i] = string(r)
+		}
+	}
+	filtered := filterPointersForArray(pointers, len(vals))
+	return &models.VizModel{
+		Type:      "string",
+		Name:      v.Name,
+		Values:    vals,
+		Highlight: pointerIndices(filtered),
+		Pointers:  filtered,
+	}
 }
 
 func maxRowLen(rows [][]string) int {
@@ -338,7 +400,7 @@ func isLinkedListType(v models.Variable) bool {
 	hasVal, hasNext := false, false
 	for _, c := range v.Children {
 		switch c.Name {
-		case "Val", "Value":
+		case "Val", "Value", "Data":
 			hasVal = true
 		case "Next":
 			hasNext = true
@@ -351,7 +413,7 @@ func extractLinkedList(v models.Variable, activeAddr string) *models.VizModel {
 	var nodes []models.VizNode
 	var edges []models.VizEdge
 	addrMap := make(map[string]string)
-	walkList(v, &nodes, &edges, addrMap, 0, 20)
+	walkList(v, &nodes, &edges, addrMap, 0, 50)
 	if len(nodes) == 0 {
 		return nil
 	}
@@ -375,7 +437,7 @@ func walkList(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizEdg
 		addrMap[addr] = id
 	}
 	for _, c := range v.Children {
-		if c.Name == "Val" || c.Name == "Value" {
+		if c.Name == "Val" || c.Name == "Value" || c.Name == "Data" {
 			label = c.Value
 		}
 	}
@@ -410,7 +472,7 @@ func isTreeType(v models.Variable) bool {
 	hasVal, hasLeft, hasRight := false, false, false
 	for _, c := range v.Children {
 		switch c.Name {
-		case "Val", "Value":
+		case "Val", "Value", "Data":
 			hasVal = true
 		case "Left":
 			hasLeft = true
@@ -429,7 +491,7 @@ func extractTree(v models.Variable, activeAddr string) *models.VizModel {
 	if width < 120 {
 		width = 120
 	}
-	layoutTree(v, &nodes, &edges, addrMap, "0", 0, 0, width, 4)
+	layoutTree(v, &nodes, &edges, addrMap, "0", 0, 0, width, 6)
 	if len(nodes) == 0 {
 		return nil
 	}
@@ -488,7 +550,7 @@ func layoutTree(v models.Variable, nodes *[]models.VizNode, edges *[]models.VizE
 	for i := range v.Children {
 		c := v.Children[i]
 		switch c.Name {
-		case "Val", "Value":
+		case "Val", "Value", "Data":
 			label = c.Value
 		case "Left":
 			left = &v.Children[i]
