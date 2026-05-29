@@ -6,6 +6,8 @@ interface DebuggerState {
   currentProblem: Problem | null;
   customMode: boolean;
   source: string;
+  debugSource: string;
+  debugFile: string;
   sessionId: string;
   trace: Trace | null;
   frameIndex: number;
@@ -17,6 +19,7 @@ interface DebuggerState {
   setCurrentProblem: (p: Problem | null) => void;
   setCustomMode: (v: boolean) => void;
   setSource: (s: string) => void;
+  setDebugSource: (s: string, file?: string) => void;
   setSessionId: (id: string) => void;
   setTrace: (t: Trace | null) => void;
   setFrameIndex: (i: number) => void;
@@ -32,6 +35,8 @@ export const useDebuggerStore = create<DebuggerState>((set, get) => ({
   currentProblem: null,
   customMode: false,
   source: defaultCustomSource(),
+  debugSource: '',
+  debugFile: '',
   sessionId: '',
   trace: null,
   frameIndex: 0,
@@ -43,6 +48,8 @@ export const useDebuggerStore = create<DebuggerState>((set, get) => ({
   setCurrentProblem: (currentProblem) => set({ currentProblem }),
   setCustomMode: (customMode) => set({ customMode }),
   setSource: (source) => set({ source }),
+  setDebugSource: (debugSource, debugFile = '') =>
+    set((s) => ({ debugSource, debugFile: debugFile || s.debugFile })),
   setSessionId: (sessionId) => set({ sessionId }),
   setTrace: (trace) => set({ trace, frameIndex: trace?.frames?.length ? trace.frames.length - 1 : 0 }),
   setFrameIndex: (frameIndex) => set({ frameIndex }),

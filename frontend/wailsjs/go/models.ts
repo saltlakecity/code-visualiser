@@ -43,6 +43,7 @@ export namespace models {
 	    sessionId: string;
 	    binaryPath?: string;
 	    compiledSource?: string;
+	    debugSource?: string;
 	    debugFile?: string;
 	    editorLineOffset: number;
 	    errors?: CompileError[];
@@ -57,6 +58,7 @@ export namespace models {
 	        this.sessionId = source["sessionId"];
 	        this.binaryPath = source["binaryPath"];
 	        this.compiledSource = source["compiledSource"];
+	        this.debugSource = source["debugSource"];
 	        this.debugFile = source["debugFile"];
 	        this.editorLineOffset = source["editorLineOffset"];
 	        this.errors = this.convertValues(source["errors"], CompileError);
@@ -248,11 +250,26 @@ export namespace models {
 	        this.y = source["y"];
 	    }
 	}
+	export class VizPointer {
+	    name: string;
+	    index: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VizPointer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.index = source["index"];
+	    }
+	}
 	export class VizModel {
 	    type: string;
 	    name: string;
 	    values?: string[];
 	    highlight?: number[];
+	    pointers?: VizPointer[];
 	    nodes?: VizNode[];
 	    edges?: VizEdge[];
 	
@@ -266,6 +283,7 @@ export namespace models {
 	        this.name = source["name"];
 	        this.values = source["values"];
 	        this.highlight = source["highlight"];
+	        this.pointers = this.convertValues(source["pointers"], VizPointer);
 	        this.nodes = this.convertValues(source["nodes"], VizNode);
 	        this.edges = this.convertValues(source["edges"], VizEdge);
 	    }
@@ -404,6 +422,7 @@ export namespace models {
 		    return a;
 		}
 	}
+	
 	
 	
 	

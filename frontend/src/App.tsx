@@ -27,6 +27,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { t, translateStatus } from './i18n';
 import { currentLang } from './store/settingsStore';
 import type { Trace } from './types';
+import { hasSliceLikeVariables } from './utils/vizHelpers';
 
 type RightTab = 'vars' | 'stack';
 
@@ -36,6 +37,7 @@ function App() {
     currentProblem,
     customMode,
     source,
+    debugSource,
     sessionId,
     trace,
     frameIndex,
@@ -47,6 +49,7 @@ function App() {
     setCurrentProblem,
     setCustomMode,
     setSource,
+    setDebugSource,
     setSessionId,
     setTrace,
     setFrameIndex,
@@ -79,6 +82,7 @@ function App() {
       setCompileErrors([]);
       setPanicMsg('');
       setTrace(null);
+      setDebugSource('');
       setStatus('idle');
     },
     [setCustomMode, setCurrentProblem, setSource, setCompileErrors, setPanicMsg, setTrace, setStatus],
@@ -134,6 +138,7 @@ function App() {
     setCompileErrors([]);
     setPanicMsg('');
     setTrace(null);
+    setDebugSource('');
     setStatus('idle');
     try {
       const saved = await LoadCustomCode('');
@@ -172,6 +177,7 @@ function App() {
     setCompileErrors([]);
     setPanicMsg('');
     setTrace(null);
+    setDebugSource('');
     setIsRunning(true);
     setStatus('compiling');
 
@@ -185,8 +191,8 @@ function App() {
       return;
     }
 
-    if (res.compiledSource?.trim()) {
-      setSource(res.compiledSource);
+    if (res.debugSource?.trim()) {
+      setDebugSource(res.debugSource, res.debugFile ?? '');
     }
 
     const sid = res.sessionId;
@@ -260,6 +266,8 @@ function App() {
   };
 
   const frame = currentFrame();
+  const editorSource = trace && debugSource ? debugSource : source;
+  const highlightLine = frame?.line ?? 0;
   const canStep =
     !!sessionId && !isRunning && (status === 'paused' || status === 'debugging');
   const canPlay = (trace?.frames?.length ?? 0) > 0;
@@ -298,11 +306,10 @@ function App() {
           />
           <div className="min-h-0 flex-1 p-3">
             <CodeEditor
-              source={source}
+              source={editorSource}
               onChange={setSource}
-              currentLine={frame?.line}
-              editorLine={frame?.editorLine ?? frame?.line}
-              currentFile={frame?.file}
+              highlightLine={highlightLine}
+              readOnly={!!trace}
               errors={compileErrors}
             />
           </div>
@@ -324,7 +331,7 @@ function App() {
               {tr.callStack}
             </TabButton>
           </div>
-          <div className="h-48 overflow-hidden border-b border-border">
+          <div className="h-36 overflow-hidden border-b border-border">
             {rightTab === 'vars' ? (
               <VariablesTree variables={frame?.variables ?? []} />
             ) : (
@@ -340,7 +347,13 @@ function App() {
                 <VizPanel models={frame?.viz ?? []} />
               </Suspense>
             ) : (
-              <div className="flex h-full items-center justify-center p-4 text-xs text-muted">{tr.vizEmpty}</div>
+              <div className="flex h-full items-center justify-center p-4 text-center text-xs text-muted">
+                {trace?.frames?.length
+                  ? hasSliceLikeVariables(frame?.variables ?? [])
+                    ? tr.vizUnrecognized
+                    : tr.vizEmpty
+                  : tr.vizEmpty}
+              </div>
             )}
           </div>
         </aside>

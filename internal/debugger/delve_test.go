@@ -70,13 +70,29 @@ func main() {
 	case <-done:
 		t.Logf("status=%s frames=%d", trace.Status, len(trace.Frames))
 		for i, f := range trace.Frames {
-			t.Logf("  frame %d: %s:%d %s vars=%d", i, f.File, f.Line, f.Function, len(f.Variables))
+			t.Logf("  frame %d: %s:%d %s vars=%d viz=%d", i, f.File, f.Line, f.Function, len(f.Variables), len(f.Viz))
 		}
 		if len(trace.Frames) == 0 {
 			t.Fatal("no frames recorded")
 		}
 		if len(trace.Frames) < 3 {
 			t.Fatalf("expected multiple frames, got %d", len(trace.Frames))
+		}
+		var inTwoSum bool
+		var hasViz bool
+		for _, f := range trace.Frames {
+			if f.File == "solution.go" && f.Line > 0 {
+				inTwoSum = true
+			}
+			if len(f.Viz) > 0 {
+				hasViz = true
+			}
+		}
+		if !inTwoSum {
+			t.Fatal("expected frames in solution.go")
+		}
+		if !hasViz {
+			t.Fatal("expected at least one frame with viz models (array/map)")
 		}
 	case <-time.After(15 * time.Second):
 		s.Stop()

@@ -22,6 +22,7 @@ export const ru: Locale = {
   noVariables: 'Нет переменных в этом кадре',
   callStackEmpty: 'Стек вызовов пуст',
   vizEmpty: 'Запустите код для визуализации структур данных',
+  vizUnrecognized: 'Структуры данных в переменных не распознаны для визуализации',
   status: {
     idle: 'ожидание',
     compiling: 'компиляция',

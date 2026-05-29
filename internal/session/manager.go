@@ -2,6 +2,8 @@ package session
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -25,14 +27,14 @@ type Manager struct {
 }
 
 type entry struct {
-	paths           *workspace.SessionPaths
-	debug           *debugger.Session
-	mode            string
-	source          string
-	compiledSource  string
-	debugFile       string
+	paths            *workspace.SessionPaths
+	debug            *debugger.Session
+	mode             string
+	source           string
+	debugSource      string
+	debugFile        string
 	editorLineOffset int
-	done            chan struct{}
+	done             chan struct{}
 }
 
 // NewManager creates a session manager.
@@ -115,20 +117,28 @@ func (m *Manager) Compile(source string, mode string, mainExtra string) (models.
 	if mode == "function_wrapper" {
 		debugFile = "solution.go"
 	}
-	offset := workspace.EditorLineOffset(editorSource, prepared)
+	debugPath := filepath.Join(paths.Dir, debugFile)
+	debugBytes, err := os.ReadFile(debugPath)
+	if err != nil {
+		m.builder.Cleanup(paths.ID)
+		return models.CompileResult{}, fmt.Errorf("read debug file: %w", err)
+	}
+	debugSource := string(debugBytes)
+	offset := workspace.EditorLineOffset(editorSource, debugSource)
 
 	m.mu.Lock()
 	m.sessions[paths.ID] = &entry{
 		paths:            paths,
 		mode:             mode,
 		source:           source,
-		compiledSource:   prepared,
+		debugSource:      debugSource,
 		debugFile:        debugFile,
 		editorLineOffset: offset,
 	}
 	m.mu.Unlock()
 
-	result.CompiledSource = prepared
+	result.CompiledSource = debugSource
+	result.DebugSource = debugSource
 	result.DebugFile = debugFile
 	result.EditorLineOffset = offset
 	return result, nil

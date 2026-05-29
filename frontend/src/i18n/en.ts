@@ -20,6 +20,7 @@ export const en = {
   noVariables: 'No variables in this frame',
   callStackEmpty: 'Call stack empty',
   vizEmpty: 'Run code to see data structure visualization',
+  vizUnrecognized: 'Data structures in variables were not recognized for visualization',
   status: {
     idle: 'idle',
     compiling: 'compiling',

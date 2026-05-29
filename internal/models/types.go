@@ -30,6 +30,7 @@ type CompileResult struct {
 	Session          string         `json:"sessionId"`
 	Binary           string         `json:"binaryPath,omitempty"`
 	CompiledSource   string         `json:"compiledSource,omitempty"`
+	DebugSource      string         `json:"debugSource,omitempty"`
 	DebugFile        string         `json:"debugFile,omitempty"`
 	EditorLineOffset int            `json:"editorLineOffset"`
 	Errors           []CompileError `json:"errors,omitempty"`
@@ -83,14 +84,21 @@ type StackFrame struct {
 	Function string `json:"function"`
 }
 
+// VizPointer labels an index variable pointing into an array.
+type VizPointer struct {
+	Name  string `json:"name"`
+	Index int    `json:"index"`
+}
+
 // VizModel is visualization data for the UI.
 type VizModel struct {
-	Type      string   `json:"type"` // array, linked_list, tree, map
-	Name      string   `json:"name"`
-	Values    []string `json:"values,omitempty"`
-	Highlight []int    `json:"highlight,omitempty"`
-	Nodes     []VizNode `json:"nodes,omitempty"`
-	Edges     []VizEdge `json:"edges,omitempty"`
+	Type      string       `json:"type"` // array, linked_list, tree, map
+	Name      string       `json:"name"`
+	Values    []string     `json:"values,omitempty"`
+	Highlight []int        `json:"highlight,omitempty"`
+	Pointers  []VizPointer `json:"pointers,omitempty"`
+	Nodes     []VizNode    `json:"nodes,omitempty"`
+	Edges     []VizEdge    `json:"edges,omitempty"`
 }
 
 // VizNode for graph visualizations.

@@ -28,6 +28,7 @@ export interface CompileResult {
   sessionId: string;
   binaryPath?: string;
   compiledSource?: string;
+  debugSource?: string;
   debugFile?: string;
   editorLineOffset?: number;
   errors?: CompileError[];
@@ -51,6 +52,7 @@ export interface VizModel {
   name: string;
   values?: string[];
   highlight?: number[];
+  pointers?: { name: string; index: number }[];
   nodes?: { id: string; label: string; x?: number; y?: number }[];
   edges?: { from: string; to: string }[];
 }

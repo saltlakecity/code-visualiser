@@ -95,8 +95,8 @@ func (r *Recorder) Count() int {
 
 // BuildFrame constructs a TraceFrame from debugger state.
 func BuildFrame(file string, line, editorLine int, function string, vars []models.Variable, stack []models.StackFrame) models.TraceFrame {
-	highlight := viz.DetectHighlights(vars)
-	vizModels := viz.Extract(vars, highlight)
+	pointers := viz.DetectPointers(vars)
+	vizModels := viz.Extract(vars, pointers)
 	if editorLine <= 0 {
 		editorLine = line
 	}
